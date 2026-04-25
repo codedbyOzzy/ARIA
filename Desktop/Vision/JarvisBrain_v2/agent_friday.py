@@ -6,12 +6,19 @@ FRIDAY – Voice Agent (MCP-powered)
 import logging
 import os
 import json
+import random
+import asyncio
 import threading
 import time
+from typing import Any
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 import httpx
+from blackbox import log_event as blackbox_log_event
+from friday.pipeline import CommandPipeline
+from friday.tools import desktop_control, local_llm, memory, ollama_runtime, policy, system, task_executor, utils, weather, web
+from friday.tools.sanitizer import sanitize_for_speech
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.llm import mcp
 from livekit.agents.voice import Agent, AgentSession
@@ -78,6 +85,8 @@ Behavioral rules:
 2.1) Never speak raw JSON, raw dicts, tool-call payloads, or markup tokens.
      If a tool returns noisy text, run clean_voice_text and then answer naturally.
 3) Voice-only style: no markdown, no bullet points, no JSON-like formatting.
+3.1) Reply in Turkish unless the user explicitly requests another language.
+3.2) Never include raw URLs or markdown links in spoken answers.
 4) Keep most answers to 1-3 short sentences. Extend only when user explicitly asks for detail.
 5) Do not guess facts. If tool output is insufficient, say it is not fully verified and offer to check again.
 6) After world news brief, immediately follow with opening world monitor.
@@ -101,6 +110,112 @@ logger = logging.getLogger("friday-agent")
 logger.setLevel(logging.INFO)
 _RUNTIME_LOCK = threading.Lock()
 _RUNTIME_COMPONENTS: tuple[object, object, object, object] | None = None
+_PUBLISHER: "VoiceStatePublisher | None" = None
+_LIVEKIT_PIPELINE: "CommandPipeline | None" = None
+
+
+class _Collector:
+    def __init__(self) -> None:
+        self.tools: dict[str, Any] = {}
+
+    def tool(self):
+        def dec(fn):
+            self.tools[fn.__name__] = fn
+            return fn
+
+        return dec
+
+    def prompt(self):
+        def dec(fn):
+            return fn
+
+        return dec
+
+    def resource(self, *_args, **_kwargs):
+        def dec(fn):
+            return fn
+
+        return dec
+
+
+def _build_local_tools() -> dict[str, Any]:
+    c = _Collector()
+    web.register(c)
+    policy.register(c)
+    memory.register(c)
+    ollama_runtime.register(c)
+    system.register(c)
+    utils.register(c)
+    local_llm.register(c)
+    desktop_control.register(c)
+    task_executor.register(c)
+    weather.register(c)
+    return c.tools
+
+
+class _LivekitPolicyAdapter:
+    def check(self, intent: dict[str, Any]) -> tuple[bool, str]:
+        tool = str(intent.get("tool", "") or "").strip().lower()
+        if tool in {"", "bilinmeyen"}:
+            return False, "Bu komuta izin verilmiyor."
+        return True, ""
+
+
+class _LivekitToolsAdapter:
+    def __init__(self, tools_map: dict[str, Any]) -> None:
+        self._tools_map = tools_map
+
+    def execute(self, intent: dict[str, Any]) -> Any:
+        tool = str(intent.get("tool", "") or "").strip()
+        args = dict(intent.get("args", {}) or {})
+        fn = self._tools_map.get(tool)
+        if not fn:
+            raise RuntimeError(f"Tool not found: {tool}")
+        if callable(fn):
+            out = fn(**args)
+            return out if isinstance(out, str) else str(out)
+        raise RuntimeError(f"Tool is not callable: {tool}")
+
+    def format_weather_response(self, data: dict[str, Any]) -> str:
+        return weather.format_weather_response(data)
+
+
+class _LivekitSanitizerAdapter:
+    @staticmethod
+    def clean(raw: str) -> str:
+        return sanitize_for_speech(raw)
+
+
+class _LivekitBlackboxAdapter:
+    @staticmethod
+    def log_event(event: str, level: str = "info", **kwargs: Any) -> None:
+        blackbox_log_event(event, level=level, **kwargs)
+
+
+def _get_livekit_pipeline() -> CommandPipeline:
+    global _LIVEKIT_PIPELINE
+    if _LIVEKIT_PIPELINE is None:
+        _LIVEKIT_PIPELINE = CommandPipeline(
+            policy=_LivekitPolicyAdapter(),
+            tools=_LivekitToolsAdapter(_build_local_tools()),
+            sanitizer=_LivekitSanitizerAdapter(),
+            blackbox=_LivekitBlackboxAdapter(),
+        )
+    return _LIVEKIT_PIPELINE
+
+
+def _run_livekit_pipeline_command(transcribed_text: str) -> dict[str, Any]:
+    """
+    Run deterministic transcript text through the shared command pipeline.
+    """
+    pipeline = _get_livekit_pipeline()
+    result = pipeline.run(transcribed_text, source="livekit")
+    return {
+        "success": result.success,
+        "tool_name": result.tool_name,
+        "result_type": result.result_type,
+        "response": result.response,
+    }
 
 def _normalize_state(state: str) -> str:
     raw = (state or "").strip().lower()
@@ -127,6 +242,39 @@ def _write_voice_status(state: str, extra: dict | None = None) -> None:
             json.dump(payload, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
+
+class VoiceStatePublisher:
+    def __init__(self, interval: float = 5.0, jitter: float = 0.5) -> None:
+        self.interval = interval
+        self.jitter = jitter
+        self._stop = threading.Event()
+        self._current_state = "booting"
+        self._extra: dict = {}
+        self._lock = threading.Lock()
+
+    def set_state(self, state: str, **extra) -> None:
+        with self._lock:
+            self._current_state = _normalize_state(state)
+            self._extra = dict(extra or {})
+            _write_voice_status(self._current_state, extra=self._extra)
+
+    def _loop(self) -> None:
+        while True:
+            wait_sec = max(0.5, self.interval + random.uniform(-self.jitter, self.jitter))
+            if self._stop.wait(wait_sec):
+                return
+            with self._lock:
+                _write_voice_status(self._current_state, extra=self._extra)
+
+    def start(self) -> "VoiceStatePublisher":
+        self.set_state("booting")
+        t = threading.Thread(target=self._loop, daemon=True)
+        t.start()
+        return self
+
+    def stop(self) -> None:
+        self._stop.set()
 
 
 def _mcp_server_url() -> str:
@@ -227,6 +375,33 @@ class FridayAgent(Agent):
             instructions="Greet the user and say FRIDAY systems are online."
         )
 
+    async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+        transcript = ""
+        try:
+            transcript = str(getattr(new_message, "text_content", "") or "").strip()
+        except Exception:
+            transcript = ""
+        if not transcript:
+            try:
+                messages = list(getattr(turn_ctx, "messages", []) or [])
+                if messages:
+                    transcript = str(getattr(messages[-1], "text_content", "") or "").strip()
+            except Exception:
+                transcript = ""
+        if transcript:
+            blackbox_log_event("livekit_transcript_received", level="info", source="livekit", text=transcript[:220])
+            await asyncio.to_thread(_run_livekit_pipeline_command, transcript)
+
+    async def tts_node(self, text, model_settings):
+        async def _sanitized_text_stream():
+            async for chunk in text:
+                cleaned = sanitize_for_speech(chunk)
+                if cleaned:
+                    yield cleaned
+
+        async for frame in Agent.default.tts_node(self, _sanitized_text_stream(), model_settings):
+            yield frame
+
 
 def _turn_detection() -> str:
     return "stt" if STT_PROVIDER == "sarvam" else "vad"
@@ -237,13 +412,14 @@ def _endpointing_delay() -> float:
 
 
 async def entrypoint(ctx: JobContext) -> None:
-    _write_voice_status(
-        "listening",
-        {
-            "room": ctx.room.name,
-            "participant_count": len(getattr(ctx.room, "remote_participants", {}) or {}),
-        },
-    )
+    extras = {
+        "room": ctx.room.name,
+        "participant_count": len(getattr(ctx.room, "remote_participants", {}) or {}),
+    }
+    if _PUBLISHER:
+        _PUBLISHER.set_state("listening", **extras)
+    else:
+        _write_voice_status("listening", extras)
     logger.info(
         "FRIDAY online - room: %s | STT=%s | LLM=%s | TTS=%s",
         ctx.room.name,
@@ -257,20 +433,47 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_detection=_turn_detection(),
         min_endpointing_delay=_endpointing_delay(),
     )
-    _write_voice_status("executing", {"room": ctx.room.name})
-    await session.start(agent=FridayAgent(stt=stt, llm=llm, tts=tts, vad=vad), room=ctx.room)
+    try:
+        if _PUBLISHER:
+            _PUBLISHER.set_state("executing", **extras)
+        else:
+            _write_voice_status("executing", extras)
+        # Sprint 2.1: LiveKit adapter path uses shared command pipeline.
+        # Optional smoke commands can be injected as a lightweight live test hook.
+        smoke = [s.strip() for s in os.getenv("LIVEKIT_SMOKE_COMMANDS", "").split("||") if s.strip()]
+        for text in smoke:
+            _run_livekit_pipeline_command(text)
+        await session.start(agent=FridayAgent(stt=stt, llm=llm, tts=tts, vad=vad), room=ctx.room)
+        if _PUBLISHER:
+            _PUBLISHER.set_state("ready")
+        else:
+            _write_voice_status("ready")
+    except Exception as exc:
+        if _PUBLISHER:
+            _PUBLISHER.set_state("error", reason=str(exc))
+        else:
+            _write_voice_status("error", {"reason": str(exc)})
+        raise
 
 
 def main() -> None:
-    _write_voice_status("booting")
+    global _PUBLISHER
+    _PUBLISHER = VoiceStatePublisher(interval=5.0, jitter=0.5).start()
     # Preload heavy runtime components before first job assignment.
     _get_runtime_components()
     opts = WorkerOptions(
         entrypoint_fnc=entrypoint,
         agent_name=os.getenv("LIVEKIT_AGENT_NAME", "jarvisbrain-v2-voice").strip(),
     )
-    _write_voice_status("ready")
-    cli.run_app(opts)
+    if _PUBLISHER:
+        _PUBLISHER.set_state("ready")
+    else:
+        _write_voice_status("ready")
+    try:
+        cli.run_app(opts)
+    finally:
+        if _PUBLISHER:
+            _PUBLISHER.stop()
 
 
 def dev() -> None:

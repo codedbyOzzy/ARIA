@@ -20,6 +20,7 @@ from friday.tools import (
     system,
     task_executor,
     utils,
+    weather,
     web,
 )
 
@@ -59,6 +60,7 @@ def _build_tools() -> dict[str, Callable[..., Any]]:
     local_llm.register(c)
     desktop_control.register(c)
     task_executor.register(c)
+    weather.register(c)
     return c.tools
 
 

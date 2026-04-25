@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 import sys
 import threading
+import time
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -18,14 +19,62 @@ from PySide6.QtCore import QObject, Property, QTimer, Signal, Slot, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication, QMessageBox
-from friday.tools import desktop_control, local_llm, memory, ollama_runtime, policy, system, task_executor, utils, web
-from blackbox import BLACKBOX_FILE, log_event, tail_events
+from friday.pipeline import CommandPipeline
+from friday.stt_health import run_health_check
+from friday.tools import desktop_control, local_llm, memory, ollama_runtime, policy, system, task_executor, utils, weather, web
+from blackbox import BLACKBOX_FILE, last_error, last_success, log_event, tail_events
 
 
 ROOT = Path(__file__).resolve().parent
 MCP_URL = "http://127.0.0.1:8010/sse"
 PANEL_URL = "http://127.0.0.1:8030"
 STATUS_URL = f"{PANEL_URL}/api/status"
+
+
+def recovery_action(service_online: bool, pipeline_ready: bool, voice_state: str = "") -> str:
+    state = str(voice_state or "").strip().lower()
+    if not service_online:
+        return "restart"
+    if not pipeline_ready:
+        return "retry"
+    if state == "error":
+        return "retry"
+    return ""
+
+
+class UiPolicyAdapter:
+    def check(self, intent: dict[str, Any]) -> tuple[bool, str]:
+        tool = str(intent.get("tool", "") or "").strip().lower()
+        if tool in {"", "bilinmeyen"}:
+            return False, "Bu komutu yerel modda anlayamadim."
+        return True, ""
+
+
+class UiToolsAdapter:
+    def __init__(self, run_tool):
+        self._run_tool = run_tool
+
+    def execute(self, intent: dict[str, Any]) -> Any:
+        tool = str(intent.get("tool", "") or "").strip()
+        args = dict(intent.get("args", {}) or {})
+        return self._run_tool(tool, **args)
+
+    def format_weather_response(self, data: dict[str, Any]) -> str:
+        return weather.format_weather_response(data)
+
+
+class UiSanitizerAdapter:
+    def __init__(self, run_tool):
+        self._run_tool = run_tool
+
+    def clean(self, raw: str) -> str:
+        return self._run_tool("clean_voice_text", text=raw)
+
+
+class UiBlackboxAdapter:
+    @staticmethod
+    def log_event(event: str, level: str = "info", **kwargs: Any) -> None:
+        log_event(event, level=level, **kwargs)
 
 
 class _Collector:
@@ -63,6 +112,7 @@ def _build_local_tools() -> dict[str, Any]:
     local_llm.register(c)
     desktop_control.register(c)
     task_executor.register(c)
+    weather.register(c)
     return c.tools
 
 
@@ -82,6 +132,10 @@ class FridayUiBridge(QObject):
         self._ollama = "unknown"
         self._profile = "unknown"
         self._voice = "unknown"
+        self._last_error_msg = ""
+        self._last_error_ts = 0.0
+        self._last_success_msg = ""
+        self._recovery_action = ""
         self._direct_listening = False
         self._direct_last_text = ""
         self._toast = "FRIDAY arayuzu hazir."
@@ -90,7 +144,16 @@ class FridayUiBridge(QObject):
         self._listen_stop = threading.Event()
         self._listen_thread: threading.Thread | None = None
         self._tools = _build_local_tools()
+        self._pipeline = CommandPipeline(
+            policy=UiPolicyAdapter(),
+            tools=UiToolsAdapter(self._call_tool_raw),
+            sanitizer=UiSanitizerAdapter(self._call_tool_raw),
+            blackbox=UiBlackboxAdapter(),
+        )
         self._tts = pyttsx3.init()
+        self._stt_health: dict[str, Any] | None = None
+        self._stt_last_check = 0.0
+        self._stt_check_interval = 30.0
         self._poll_timer = QTimer()
         self._poll_timer.setInterval(2500)
         self._poll_timer.timeout.connect(self.refreshStatus)
@@ -121,6 +184,30 @@ class FridayUiBridge(QObject):
     @Property(str, notify=statusChanged)
     def voiceText(self) -> str:
         return self._voice
+
+    @Property(bool, notify=statusChanged)
+    def serviceOnline(self) -> bool:
+        return self._service_online
+
+    @Property(bool, notify=statusChanged)
+    def pipelineReady(self) -> bool:
+        return self._pipeline_ready
+
+    @Property(str, notify=statusChanged)
+    def lastErrorMsg(self) -> str:
+        return self._last_error_msg
+
+    @Property(float, notify=statusChanged)
+    def lastErrorTs(self) -> float:
+        return self._last_error_ts
+
+    @Property(str, notify=statusChanged)
+    def lastSuccessMsg(self) -> str:
+        return self._last_success_msg
+
+    @Property(str, notify=statusChanged)
+    def recoveryAction(self) -> str:
+        return self._recovery_action
 
     @Property(bool, notify=statusChanged)
     def directListening(self) -> bool:
@@ -158,6 +245,13 @@ class FridayUiBridge(QObject):
             voice_state=self._voice,
         )
 
+    def _compute_recovery_action(self) -> str:
+        return recovery_action(
+            service_online=self._service_online,
+            pipeline_ready=self._pipeline_ready,
+            voice_state=self._voice,
+        )
+
     def _speak(self, text: str) -> None:
         msg = str(text or "").strip()
         if not msg:
@@ -167,101 +261,128 @@ class FridayUiBridge(QObject):
             self._tts.runAndWait()
             log_event("tts_spoken", text=msg[:220])
         except Exception:
-            log_event("tts_error", trace=traceback.format_exc(limit=5))
+            log_event("tts_error", level="error", trace=traceback.format_exc(limit=5))
 
-    def _run_tool(self, name: str, *args) -> str:
+    def _call_tool_raw(self, name: str, *args, **kwargs) -> str:
         fn = self._tools.get(name)
         if not fn:
-            return f"Tool not found: {name}"
+            raise RuntimeError(f"Tool not found: {name}")
         try:
             if asyncio.iscoroutinefunction(fn):
-                out = str(asyncio.run(fn(*args)))
+                out = str(asyncio.run(fn(*args, **kwargs)))
             else:
-                out = str(fn(*args))
-            log_event("tool_ok", tool=name, result=out[:260])
+                out = str(fn(*args, **kwargs))
             return out
         except Exception as exc:
-            log_event("tool_error", tool=name, error=str(exc), trace=traceback.format_exc(limit=6))
-            return f"{name}_failed: {exc}"
+            raise RuntimeError(f"{name}_failed: {exc}") from exc
+
+    def _run_tool(self, name: str, *args, **kwargs) -> str:
+        try:
+            out = self._call_tool_raw(name, *args, **kwargs)
+            log_event("tool_ok", tool=name, result=str(out)[:260])
+            return str(out)
+        except Exception as exc:
+            log_event("tool_error", level="error", tool=name, error=str(exc), trace=traceback.format_exc(limit=6))
+            return str(exc)
 
     def _handle_direct_command(self, text: str) -> str:
-        low = (text or "").strip().lower()
         log_event("direct_command_received", text=(text or "")[:220])
-        if not low:
-            return "Komutu alamadim."
+        return self._process_voice_command(text)
 
-        if ("notepad" in low or "not defter" in low) and ("aç" in low or "ac" in low):
-            return self._run_tool("open_application", "notepad")
-        if ("notepad" in low or "not defter" in low) and ("kapat" in low):
-            return self._run_tool("close_application", "notepad", 0, "")
-        if "youtube" in low and ("aç" in low or "ac" in low):
-            return self._run_tool("open_website", "https://www.youtube.com", "")
-        if "chrome" in low and ("aç" in low or "ac" in low):
-            return self._run_tool("open_application", "chrome")
-        if ("açık pencereleri" in low) or ("pencereleri liste" in low) or ("pencereleri say" in low):
-            return self._run_tool("list_windows_text", 10)
-        if "saat kaç" in low:
-            now = self._run_tool("get_current_time")
-            return f"Saat: {now}"
-        if ("dünyada ne oluyor" in low) or ("haber" in low):
-            news = self._run_tool("get_world_news")
-            short = self._run_tool("clean_voice_text", news)
-            return short[:500]
-        return "Bu komutu yerel modda anlayamadim. Notepad aç, YouTube aç veya pencereleri listele gibi deneyin."
+    def _process_voice_command(self, text: str) -> str:
+        log_event("heard_text", level="info", text=(text or "")[:220], source="direct")
+        result = self._pipeline.run(text, source="direct")
+        log_event(
+            "tool_result",
+            level="info" if result.success else "error",
+            tool=result.tool_name,
+            result_type=result.result_type,
+            success=result.success,
+            source="direct",
+        )
+        if not result.success and result.result_type not in ("policy_block",):
+            log_event("heard_not_processed", level="warning", text=(text or "")[:220], reason=result.result_type)
+        if result.success:
+            if result.tool_name == "get_current_time":
+                return f"Saat: {result.response}"
+            if result.tool_name == "get_world_news":
+                return result.response[:500]
+            return result.response
+        return result.response
 
-    def _listen_loop(self) -> None:
-        r = sr.Recognizer()
+    def _get_stt_health(self) -> dict[str, Any]:
+        now = time.time()
+        if (not self._stt_health) or (now - self._stt_last_check > self._stt_check_interval):
+            self._stt_health = run_health_check()
+            self._stt_last_check = now
+        return self._stt_health
+
+    def _notify_user_stt_failure(self, health: dict[str, Any]) -> None:
+        msg = "Mikrofon bağlantısı kurulamadı. "
+        if not health.get("pyaudio", {}).get("ok") and not health.get("sounddevice", {}).get("ok"):
+            msg += "Mikrofon cihazı bulunamıyor, bağlı olduğundan emin olun."
+        elif not health.get("google_stt", {}).get("ok"):
+            msg += "Ses tanıma servisine ulaşılamıyor, internet bağlantınızı kontrol edin."
+        else:
+            msg += "Lütfen tekrar deneyin."
+        self._set_toast(msg)
+
+    def _listen_once_pyaudio(self, recognizer: sr.Recognizer) -> str | None:
         try:
             mic = sr.Microphone()
-            log_event("direct_listen_backend", backend="pyaudio")
+            with mic as source:
+                try:
+                    recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                except Exception:
+                    log_event("stt_ambient_adjust_error", level="error", backend="pyaudio", trace=traceback.format_exc(limit=4))
+                audio = recognizer.listen(source, timeout=1.0, phrase_time_limit=6.0)
+            return recognizer.recognize_google(audio, language="tr-TR")
+        except sr.WaitTimeoutError:
+            return None
         except Exception:
-            self._set_toast("PyAudio bulunamadi, sounddevice fallback aktif.")
-            log_event("direct_listen_backend_fallback", backend="sounddevice")
-            self._listen_loop_sounddevice(r)
-            return
+            log_event("stt_pyaudio_error", level="error", trace=traceback.format_exc(limit=4))
+            self._stt_health = None
+            return None
 
-        with mic as source:
-            try:
-                r.adjust_for_ambient_noise(source, duration=0.8)
-            except Exception:
-                pass
-            self._set_toast("Yerel dinleme aktif. Konusabilirsiniz.")
-            while not self._listen_stop.is_set():
-                try:
-                    audio = r.listen(source, timeout=1.0, phrase_time_limit=6.0)
-                except sr.WaitTimeoutError:
-                    continue
-                except Exception:
-                    continue
-                try:
-                    heard = r.recognize_google(audio, language="tr-TR")
-                except Exception:
-                    log_event("stt_error", backend="pyaudio", trace=traceback.format_exc(limit=4))
-                    continue
-                self._direct_last_text = heard
-                self.statusChanged.emit()
-                result = self._handle_direct_command(heard)
-                self._set_toast(result)
-                self._speak(result)
+    def _listen_once_sounddevice(self, recognizer: sr.Recognizer) -> str | None:
+        try:
+            sample_rate = 16000
+            frames = int(sample_rate * 4.0)
+            rec = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
+            sd.wait()
+            audio_f32 = np.squeeze(rec)
+            audio_i16 = np.clip(audio_f32 * 32767.0, -32768, 32767).astype(np.int16)
+            audio = sr.AudioData(audio_i16.tobytes(), sample_rate=sample_rate, sample_width=2)
+            return recognizer.recognize_google(audio, language="tr-TR")
+        except sr.UnknownValueError:
+            return None
+        except Exception:
+            log_event("stt_sounddevice_error", level="error", trace=traceback.format_exc(limit=4))
+            self._stt_health = None
+            return None
 
-    def _listen_loop_sounddevice(self, recognizer: sr.Recognizer) -> None:
-        sample_rate = 16000
-        chunk_sec = 4.0
-        self._set_toast("Yerel dinleme aktif (sounddevice). Konusabilirsiniz.")
+    def _listen_loop(self) -> None:
+        recognizer = sr.Recognizer()
+        self._set_toast("Yerel dinleme aktif. Konusabilirsiniz.")
         while not self._listen_stop.is_set():
-            try:
-                frames = int(sample_rate * chunk_sec)
-                rec = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
-                sd.wait()
-                audio_f32 = np.squeeze(rec)
-                audio_i16 = np.clip(audio_f32 * 32767.0, -32768, 32767).astype(np.int16)
-                audio = sr.AudioData(audio_i16.tobytes(), sample_rate=sample_rate, sample_width=2)
-                heard = recognizer.recognize_google(audio, language="tr-TR")
-            except sr.UnknownValueError:
+            health = self._get_stt_health()
+            backend = health.get("recommended")
+            heard = None
+            if backend == "pyaudio+google":
+                log_event("direct_listen_backend", backend="pyaudio")
+                heard = self._listen_once_pyaudio(recognizer)
+                if heard is None:
+                    # immediate fallback in the same tick
+                    heard = self._listen_once_sounddevice(recognizer)
+            elif backend in {"sounddevice+google", "sounddevice+offline"}:
+                log_event("direct_listen_backend", backend="sounddevice")
+                heard = self._listen_once_sounddevice(recognizer)
+            else:
+                log_event("stt_no_backend", level="critical")
+                self._notify_user_stt_failure(health)
+                time.sleep(1.0)
                 continue
-            except Exception:
-                log_event("stt_error", backend="sounddevice", trace=traceback.format_exc(limit=4))
-                continue
+
             if not heard:
                 continue
             self._direct_last_text = heard
@@ -304,6 +425,7 @@ class FridayUiBridge(QObject):
                 with httpx.stream("GET", MCP_URL, timeout=httpx.Timeout(connect=0.9, read=0.9, write=0.9, pool=0.9)) as resp:
                     mcp_ok = resp.status_code == 200
             except Exception:
+                log_event("status_mcp_probe_error", level="error", trace=traceback.format_exc(limit=4))
                 mcp_ok = False
 
             try:
@@ -322,16 +444,21 @@ class FridayUiBridge(QObject):
                     profile_text = "loaded" if has_profile else "empty"
                     voice_text = voice_state
             except Exception:
+                log_event("status_panel_probe_error", level="error", trace=traceback.format_exc(limit=4))
                 panel_ok = False
 
-            # Sprint 1a: keep service_online and pipeline_ready as separate signals.
-            # UI visual split will be implemented in Sprint 1b.
             self._service_online = self._service_online if panel_ok else bool(mcp_ok and panel_ok)
             self._running = bool(self._service_online)
             self._policy = policy_text
             self._ollama = ollama_text
             self._profile = profile_text
             self._voice = voice_text
+            err = last_error()
+            ok_evt = last_success()
+            self._last_error_msg = str(err.get("event", "")) if err else ""
+            self._last_error_ts = float(err.get("ts", 0.0)) if err else 0.0
+            self._last_success_msg = str(ok_evt.get("event", "")) if ok_evt else ""
+            self._recovery_action = self._compute_recovery_action()
             self.statusChanged.emit()
             if not self._running and not self._auto_start_attempted:
                 QTimer.singleShot(200, self.ensureStarted)
@@ -373,7 +500,7 @@ class FridayUiBridge(QObject):
             QTimer.singleShot(2200, self.refreshStatus)
         else:
             self._set_toast(f"Baslatma hatasi: {msg}")
-            log_event("stack_start_error", error=msg)
+            log_event("stack_start_error", level="error", error=msg)
 
     @Slot()
     def stopStack(self) -> None:
@@ -385,7 +512,7 @@ class FridayUiBridge(QObject):
             QTimer.singleShot(1200, self.refreshStatus)
         else:
             self._set_toast(f"Durdurma hatasi: {msg}")
-            log_event("stack_stop_error", error=msg)
+            log_event("stack_stop_error", level="error", error=msg)
 
     @Slot(result=str)
     def blackboxPath(self) -> str:

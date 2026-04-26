@@ -28,12 +28,24 @@ KURALLAR (ihlal edilemez):
 - Haber, hava, arama için ilgili araçları kullan
 - Gerçekleştirdiğin eylemi kısaca doğrula (örn: "Notepad açıldı.")
 
-ÇOKLU ADIM GÖREVLERİ:
+ÇOKLU ADIM GÖREVLERİ — SIRAYLA araç çağır, hepsini bitir:
 - "not yaz / kaydet / dosya oluştur" → write_text_file(dosya_adı, içerik) kullan — GUI dialog YOK
 - "notepad'de göster ve kaydet" → open_and_write_file(dosya_adı, içerik) kullan
-- Uygulama aç → 2s bekle → o uygulamada işlem yap
+- "klasör oluştur" → create_folder(klasör_adı) kullan
+- "kapat / uygulamayı kapat" → close_application(uygulama_adı) kullan
+- "dosyayı sil" → delete_file(dosya_adı) kullan
+- Uygulama aç → wait_seconds(3) → ekrana bak (look_at_screen) → elementi bul ve tıkla (find_and_click) → devam et
 - Masaüstü yolu: C:/Users/Pc/Desktop/dosya_adı.uzantı
-- Herhangi bir uygulamada yazı yazmak için: önce o uygulamaya tıkla (find_and_click), sonra type_text"""
+- Herhangi bir uygulamada yazı yazmak için: önce o uygulamaya tıkla (find_and_click), sonra type_text
+
+MAĞAZA / İNDİRME GÖREVLERİ (Steam, Epic, vb.):
+1. open_application("steam") → wait_seconds(5)
+2. look_at_screen("Steam açık mı, ne görünüyor?")
+3. find_and_click("Store sekmesi") → wait_seconds(2)
+4. find_and_click("arama kutusu") → type_text("oyun adı") → press_key("enter")
+5. wait_seconds(3) → find_and_click("oyun başlığı") → wait_seconds(2)
+6. find_and_click("Install/Yükle butonu")
+Her adımı gerçekten araç çağırarak yap."""
 
 _GEMINI_MODEL = os.getenv("GEMINI_LLM_MODEL", "gemini-2.5-flash")
 _OPENAI_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4.1-mini")

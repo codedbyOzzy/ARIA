@@ -206,6 +206,85 @@ def open_application(app_name: str) -> str:
         return app_name + " açılamadı: " + str(e)
 
 
+def close_application(app_name: str) -> str:
+    """Close/kill a running application by name (örn: 'spotify', 'notepad', 'chrome', 'discord')."""
+    app = (app_name or "").strip().lower()
+    if app.endswith(".exe"):
+        app = app[:-4]
+    exe_map = {
+        "chrome": "chrome.exe", "google chrome": "chrome.exe",
+        "edge": "msedge.exe", "microsoft edge": "msedge.exe",
+        "firefox": "firefox.exe", "opera": "opera.exe", "opera gx": "opera.exe",
+        "notepad": "notepad.exe", "calculator": "calc.exe", "calc": "calc.exe",
+        "spotify": "Spotify.exe", "discord": "Discord.exe",
+        "steam": "steam.exe", "vlc": "vlc.exe",
+        "vscode": "Code.exe", "vs code": "Code.exe", "code": "Code.exe",
+        "explorer": "explorer.exe", "dosya gezgini": "explorer.exe",
+        "task manager": "Taskmgr.exe", "görev yöneticisi": "Taskmgr.exe",
+        "paint": "mspaint.exe", "teams": "Teams.exe",
+        "telegram": "Telegram.exe", "whatsapp": "WhatsApp.exe",
+        "word": "WINWORD.EXE", "excel": "EXCEL.EXE", "powerpoint": "POWERPNT.EXE",
+    }
+    exe = exe_map.get(app, app + ".exe")
+    result = subprocess.run(
+        ["taskkill", "/f", "/im", exe],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return app_name + " kapatıldı."
+    # Try without .exe suffix too
+    result2 = subprocess.run(
+        ["taskkill", "/f", "/im", app],
+        capture_output=True, text=True
+    )
+    if result2.returncode == 0:
+        return app_name + " kapatıldı."
+    return app_name + " kapatılamadı (zaten kapalı olabilir)."
+
+
+def create_folder(path: str) -> str:
+    """Create a new folder/directory. If only a name is given (e.g. 'Deneme'), creates it on the Desktop.
+
+    Examples: 'Deneme', 'Projeler', 'C:/Users/Pc/Desktop/Notlar'
+    """
+    p = (path or "").strip()
+    if not p:
+        return "Klasör adı boş."
+    if not os.path.isabs(p) and "\\" not in p and "/" not in p:
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        p = os.path.join(desktop, p)
+    try:
+        os.makedirs(p, exist_ok=True)
+        return "Klasör oluşturuldu: " + p
+    except Exception as e:
+        return "Klasör oluşturulamadı: " + str(e)
+
+
+def delete_file(path: str) -> str:
+    """Delete a file or empty folder. path: full path or filename on Desktop.
+
+    Examples: 'eski_not.txt', 'C:/Users/Pc/Desktop/eski_not.txt'
+    """
+    p = (path or "").strip()
+    if not p:
+        return "Dosya yolu boş."
+    if not os.path.isabs(p) and "\\" not in p and "/" not in p:
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        p = os.path.join(desktop, p)
+    try:
+        if os.path.isdir(p):
+            import shutil as _shutil
+            _shutil.rmtree(p)
+            return "Klasör silindi: " + p
+        elif os.path.isfile(p):
+            os.remove(p)
+            return "Dosya silindi: " + p
+        else:
+            return "Bulunamadı: " + p
+    except Exception as e:
+        return "Silinemedi: " + str(e)
+
+
 def open_website(url: str) -> str:
     """Open a website in the default browser (örn: 'youtube.com', 'github.com')."""
     u = (url or "").strip()
@@ -415,6 +494,9 @@ from friday.tools.desktop import DESKTOP_TOOLS
 
 ALL_TOOLS = [
     open_application,
+    close_application,
+    create_folder,
+    delete_file,
     open_website,
     get_current_time,
     get_system_stats,

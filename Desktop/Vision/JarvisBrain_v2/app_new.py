@@ -34,84 +34,60 @@ class SttThread(QThread):
         import sounddevice as sd
         import speech_recognition as sr
 
-        CHUNK = 1024
-        SILENCE_THRESH = 80       # RMS eşiği — WDM-KS ortam ~0, ses ~200+
-        SILENCE_SEC = 1.5
-        MAX_SEC = 12
-
-        # WDM-KS cihazını bul (Nahimic/Sonar bypass için gerekli)
+        # Sabit WDM-KS cihaz — Nahimic/Sonar bypass (Realtek HD Audio Mic input)
+        MIC_DEVICE = 25
         RATE = 44100
-        MIC_DEVICE = None
-        try:
-            apis = sd.query_hostapis()
-            wdm_idx = next((i for i, a in enumerate(apis) if "WDM" in a["name"]), None)
-            if wdm_idx is not None:
-                for i, d in enumerate(sd.query_devices()):
-                    if d["hostapi"] == wdm_idx and d["max_input_channels"] > 0:
-                        name = d["name"].lower()
-                        if "sonar" not in name and "output" not in name and "stereo" not in name:
-                            MIC_DEVICE = i
-                            RATE = int(d["default_samplerate"])
-                            break
-        except Exception:
-            pass
+        THRESH = 80
+        SILENCE_SEC = 1.5
+        MAX_SEC = 10
+        CHUNK_SECS = 0.3
+        N = int(CHUNK_SECS * RATE)
+        MAX_SILENCE = int(SILENCE_SEC / CHUNK_SECS)
+        MAX_LOOPS = int(MAX_SEC / CHUNK_SECS)
 
         self.listening.emit(True)
         frames = []
-        speaking_started = False
-        silence_chunks = 0
-        CHUNK_SECS = 0.3
-        CHUNK_SAMPLES = int(CHUNK_SECS * RATE)
-        MAX_SILENCE_CHUNKS = int(SILENCE_SEC / CHUNK_SECS)
-        MAX_CHUNKS = int(MAX_SEC / CHUNK_SECS)
-
-        rec_kwargs = dict(samplerate=RATE, channels=1, dtype="int16")
-        if MIC_DEVICE is not None:
-            rec_kwargs["device"] = MIC_DEVICE
+        started = False
+        silence = 0
 
         try:
-            for _ in range(MAX_CHUNKS):
-                chunk = sd.rec(CHUNK_SAMPLES, **rec_kwargs)
+            for _ in range(MAX_LOOPS):
+                data = sd.rec(N, samplerate=RATE, channels=1, dtype="int16", device=MIC_DEVICE)
                 sd.wait()
-                chunk = chunk.flatten()
-                rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
-                if rms > SILENCE_THRESH:
-                    speaking_started = True
-                    silence_chunks = 0
-                    frames.append(chunk.tobytes())
-                elif speaking_started:
-                    frames.append(chunk.tobytes())
-                    silence_chunks += 1
-                    if silence_chunks >= MAX_SILENCE_CHUNKS:
+                flat = data.flatten()
+                rms = float(np.sqrt(np.mean(flat.astype(np.float32) ** 2)))
+                if rms > THRESH:
+                    started = True
+                    silence = 0
+                    frames.append(flat.tobytes())
+                elif started:
+                    frames.append(flat.tobytes())
+                    silence += 1
+                    if silence >= MAX_SILENCE:
                         break
 
             if not frames:
                 self.error.emit("timeout")
                 return
 
+            # 44100 → 16000 resample
             raw = b"".join(frames)
-            # Google STT için 16kHz'e resample
-            TARGET = 16000
-            if RATE != TARGET:
-                arr = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
-                ratio = TARGET / RATE
-                new_len = int(len(arr) * ratio)
-                arr_r = np.interp(
-                    np.linspace(0, len(arr) - 1, new_len),
-                    np.arange(len(arr)), arr,
-                ).astype(np.int16)
-                raw = arr_r.tobytes()
+            arr = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+            new_len = int(len(arr) * 16000 / RATE)
+            resampled = np.interp(
+                np.linspace(0, len(arr) - 1, new_len),
+                np.arange(len(arr)), arr,
+            ).astype(np.int16)
 
             buf = io.BytesIO()
             with wave.open(buf, "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
-                wf.setframerate(TARGET)
-                wf.writeframes(raw)
+                wf.setframerate(16000)
+                wf.writeframes(resampled.tobytes())
 
-            audio_data = sr.AudioData(buf.getvalue(), TARGET, 2)
-            recognizer = sr.Recognizer()
-            text = recognizer.recognize_google(audio_data, language="tr-TR")
+            audio = sr.AudioData(buf.getvalue(), 16000, 2)
+            text = sr.Recognizer().recognize_google(audio, language="tr-TR")
             self.result.emit(text)
         except Exception as exc:
             self.error.emit(str(exc))

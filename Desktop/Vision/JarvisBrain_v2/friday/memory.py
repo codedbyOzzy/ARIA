@@ -47,11 +47,12 @@ class Memory:
     id:            str
     content:       str
     category:      MemoryCategory
-    importance:    float = 0.5
-    created_at:    float = field(default_factory=time.time)
-    last_accessed: float = field(default_factory=time.time)
-    access_count:  int   = 0
-    tags:          list  = field(default_factory=list)
+    importance:    float      = 0.5
+    created_at:    float      = field(default_factory=time.time)
+    last_accessed: float      = field(default_factory=time.time)
+    access_count:  int        = 0
+    tags:          list       = field(default_factory=list)
+    embedding:     list[float] = field(default_factory=list)   # semantic vector
 
     def age_days(self) -> float:
         return (time.time() - self.last_accessed) / 86400
@@ -105,6 +106,7 @@ class MemoryStore:
                     last_accessed=float(item.get("last_accessed", time.time())),
                     access_count=int(item.get("access_count", 0)),
                     tags=list(item.get("tags", [])),
+                    embedding=list(item.get("embedding", [])),
                 )
                 self._store[m.id] = m
             print(f"[Memory] {len(self._store)} hafıza yüklendi.", flush=True)
@@ -123,6 +125,7 @@ class MemoryStore:
                     "last_accessed": m.last_accessed,
                     "access_count":  m.access_count,
                     "tags":          m.tags,
+                    "embedding":     m.embedding,
                 }
                 for m in self._store.values()
             ]
@@ -163,6 +166,7 @@ class MemoryStore:
             category=category,
             importance=max(0.0, min(1.0, importance)),
             tags=tags or [],
+            embedding=_embed(content),   # semantic vector
         )
         self._store[m.id] = m
         self._save()
@@ -203,6 +207,7 @@ class MemoryStore:
     ) -> list[tuple[Memory, float]]:
         """
         Sorguya göre hafızaları puanlar ve sıralar.
+        Embedding mevcut ise semantic cosine similarity, yoksa TF-IDF fallback.
         Returns: [(Memory, final_score), ...]
         """
         pool = list(self._store.values())
@@ -211,13 +216,27 @@ class MemoryStore:
         if not pool:
             return []
 
-        now     = time.time()
-        corpus  = [m.content for m in pool]
-        q_vec   = _tfidf(query, corpus)
+        now = time.time()
+
+        # Semantic embedding: önce query embedding'i dene
+        q_embedding = _embed(query)
+
+        # TF-IDF fallback corpus (embedding'siz hafızalar için)
+        corpus = [m.content for m in pool]
+        q_vec  = _tfidf(query, corpus)
+
         results = []
+        backfill_needed = []   # embedding'i olmayan ama backfill yapılabilecek hafızalar
 
         for m in pool:
-            relevance  = _cosine(q_vec, _tfidf(m.content, corpus))
+            # Relevance: ikisinde de embedding varsa semantic, yoksa TF-IDF
+            if q_embedding and m.embedding:
+                relevance = _cosine_vec(q_embedding, m.embedding)
+            else:
+                relevance = _cosine(q_vec, _tfidf(m.content, corpus))
+                if q_embedding and not m.embedding:
+                    backfill_needed.append(m)  # lazy backfill kuyruğu
+
             importance = m.importance
             age_d      = (now - m.last_accessed) / 86400
             recency    = math.exp(-math.log(2) * age_d / self.HALF_LIFE)
@@ -234,7 +253,16 @@ class MemoryStore:
         # Erişilen hafızaları güçlendir
         for m, _ in top:
             m.touch(self.REINFORCE_INC)
-        if top:
+
+        # Lazy backfill: en fazla 5 eski hafızanın embedding'ini sessizce doldur
+        if backfill_needed:
+            backfill_needed.sort(key=lambda m: m.importance, reverse=True)
+            for m in backfill_needed[:5]:
+                vec = _embed(m.content)
+                if vec:
+                    m.embedding = vec
+
+        if top or backfill_needed:
             self._save()
 
         return top
@@ -250,11 +278,15 @@ class MemoryStore:
 
     # ── Context prompt ────────────────────────────────────────────────────────
 
-    def get_context_prompt(self, max_items: int = MAX_CONTEXT_ITEMS) -> str:
+    def get_context_prompt(
+        self,
+        max_items: int = MAX_CONTEXT_ITEMS,
+        query:     str = "",
+    ) -> str:
         """
         System prompt'a enjekte edilecek hafıza bloğunu döndürür.
+        query verilirse EVENT/CONTEXT hafızaları konuya göre filtrelenir.
         Zaman dilimine + kategoriye göre gruplandırılmış format.
-        FRIDAY bunu okuyarak "geçen hafta ne konuştuk" sorularını yanıtlayabilir.
         """
         if not self._store:
             return ""
@@ -277,9 +309,29 @@ class MemoryStore:
                                      MemoryCategory.FACT,
                                      MemoryCategory.GOAL)][:20]
 
-        # ── Oturum geçmişi (EVENT + CONTEXT) — zamana göre gruplu ────────────
-        sessions = [m for m in scored
-                    if m.category in (MemoryCategory.EVENT, MemoryCategory.CONTEXT)]
+        # ── Oturum geçmişi (EVENT + CONTEXT) — query varsa alakalı önce gelsin ─
+        sessions_pool = [m for m in scored
+                         if m.category in (MemoryCategory.EVENT, MemoryCategory.CONTEXT)]
+
+        if query.strip() and sessions_pool:
+            # Sorguya göre skor hesapla: embedding varsa semantic, yoksa TF-IDF
+            q_embedding = _embed(query)
+            corpus = [m.content for m in sessions_pool]
+            q_vec  = _tfidf(query, corpus)
+            ranked = []
+            for m in sessions_pool:
+                if q_embedding and m.embedding:
+                    rel = _cosine_vec(q_embedding, m.embedding)
+                else:
+                    rel = _cosine(q_vec, _tfidf(m.content, corpus))
+                age_d = (now - m.last_accessed) / DAY
+                rec   = math.exp(-math.log(2) * age_d / self.HALF_LIFE)
+                score = 0.5 * rel + 0.3 * m.importance + 0.2 * rec
+                ranked.append((m, score))
+            ranked.sort(key=lambda x: x[1], reverse=True)
+            sessions = [m for m, _ in ranked]
+        else:
+            sessions = sessions_pool
 
         def _bucket(m: Memory) -> str:
             age = (now - m.created_at) / DAY
@@ -454,6 +506,48 @@ class MemoryStore:
                 if self._store else 0.0
             ),
         }
+
+
+# ── Embedding yardımcıları ────────────────────────────────────────────────────
+
+_embed_client = None
+_EMBED_MODEL  = "text-embedding-3-small"
+
+
+def _get_embed_client():
+    global _embed_client
+    if _embed_client is None:
+        try:
+            from openai import OpenAI
+            _embed_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+        except Exception:
+            pass
+    return _embed_client
+
+
+def _embed(text: str) -> list[float]:
+    """OpenAI text-embedding-3-small ile embedding üret. Hata olursa boş döner."""
+    client = _get_embed_client()
+    if not client or not text.strip():
+        return []
+    try:
+        resp = client.embeddings.create(model=_EMBED_MODEL, input=text[:2000])
+        return resp.data[0].embedding
+    except Exception as e:
+        print(f"[Memory] Embedding hatası: {e}", flush=True)
+        return []
+
+
+def _cosine_vec(a: list[float], b: list[float]) -> float:
+    """İki float vektörü arasında cosine benzerliği."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot  = sum(x * y for x, y in zip(a, b))
+    mag_a = math.sqrt(sum(x * x for x in a))
+    mag_b = math.sqrt(sum(x * x for x in b))
+    if mag_a == 0 or mag_b == 0:
+        return 0.0
+    return dot / (mag_a * mag_b)
 
 
 # ── TF-IDF yardımcıları (saf Python, ekstra bağımlılık yok) ──────────────────

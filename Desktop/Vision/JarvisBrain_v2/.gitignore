@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Ortam
+.env
+.env.*
+!.env.example
+.venv
+venv/
+
+# Build
+build/
+dist/
+
+# Log dosyaları
+*.log
+
+# FRIDAY runtime verileri (kişisel, repoya girmez)
+.friday_app_cache.json
+.friday_blackbox.jsonl
+.friday_command_pending.jsonl
+.friday_knowledge_store.json
+.friday_learned_commands.jsonl
+.friday_memory.db
+.friday_memory.json
+.friday_neural_memory/
+.friday_policy_state.json
+.friday_reminders.json
+.friday_routine_log.jsonl
+.friday_task_history.jsonl
+.friday_voice_status.json
+.friday_quick_notes.json
+
+# Geliştirme araçları
+check_audio.py
+.obsidian/
+.python-version
+
+# Claude worktree
+.claude/
+
+# Yedek / geçici
+qt_ui/Main_backup.qml
+friday_stdout.log
+friday_stderr.log

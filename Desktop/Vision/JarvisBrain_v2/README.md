@@ -1,203 +1,381 @@
-# JarvisBrain_v2 — F.R.I.D.A.Y. Desktop Assistant
+# F.R.I.D.A.Y.
 
-JarvisBrain_v2 is a Windows-focused Turkish desktop assistant inspired by
-F.R.I.D.A.Y. It provides a PySide6 chat UI, microphone input, Gemini/OpenAI
-reasoning, text-to-speech, Gemini Live audio mode, and desktop automation tools.
+> *"Most AI assistants answer your questions. F.R.I.D.A.Y. learns who you are."*
 
-The current codebase is a local desktop app. Older MCP/LiveKit/control-panel
-entry points mentioned in previous documentation are not present in this folder.
+**Female Replacement Intelligent Digital Assistant Youth** — a personal AI system built on Windows, running locally, and growing smarter with every conversation.
 
-## Current Entry Point
+Not a chatbot. Not a widget. A system with memory, voice, tools, and four adaptive intelligence layers that make it genuinely yours over time.
 
-Run the desktop app:
+**Platform:** Windows 11 · **Status:** Active Development · **License:** Apache 2.0
 
-```powershell
-pip install -r requirements.txt
-python app_new.py
+---
+
+## What it actually does
+
+```
+You say:    "launch my usual setup"
+            "what was that memory leak we fixed last week?"
+            "summarize the news and remind me at 7"
+            "open steam and launch the game we were talking about"
+
+F.R.I.D.A.Y. handles it.
 ```
 
-The app opens a dark F.R.I.D.A.Y. interface where you can:
+Not because it was pre-programmed with those phrases.  
+Because it built a model of who you are and how you talk.
 
-- Type commands in Turkish.
-- Use the microphone button for short speech-to-text commands.
-- Use Live mode for Gemini Native Audio.
-- Hear responses through the TTS engine.
-- Let the assistant call desktop tools when a command requires real action.
+---
 
 ## Architecture
 
-```text
-app_new.py
-  -> friday.brain.Brain
-       -> Gemini 2.5 Flash primary
-       -> OpenAI fallback after repeated Gemini failures
-       -> friday.tools.actions.ALL_TOOLS
-  -> friday.tts_engine.speak
-  -> friday.live_audio.LiveAudioThread
+```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  app_new.py — PySide6 + QML Iron Man HUD                        │
+  └────────────────────────┬────────────────────────────────────────┘
+                           │
+         ┌─────────────────┼──────────────────────┐
+         │                 │                      │
+         ▼                 ▼                      ▼
+  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐
+  │ LiveAudio   │  │ SafeBrain    │  │  LocalVoice        │
+  │ (Gemini     │  │ Router       │  │  (offline fallback)│
+  │  Live Audio)│  │              │  └────────────────────┘
+  └─────────────┘  │  ┌─────────┐│
+                   │  │  Brain  ││  GPT-4.1-mini / o4-mini / Gemini
+                   │  └─────────┘│
+                   │  ┌─────────┐│
+                   │  │LocalLLM ││  Ollama (qwen2.5)
+                   │  └─────────┘│
+                   └──────┬───────┘
+                          │
+              ┌───────────┴───────────┐
+              │      50+ Tools        │
+              │  Desktop · System     │
+              │  Files · Web · Voice  │
+              │  Memory · Steam · ... │
+              └───────────────────────┘
 ```
 
-### `app_new.py`
+### The four adaptive intelligence layers
 
-Main PySide6 desktop UI. It owns the chat window, text input, microphone button,
-Live mode button, reset shortcut, worker threads, and TTS trigger.
-
-Normal microphone mode records audio with `sounddevice`, converts it to WAV, and
-uses `SpeechRecognition` Google STT with `tr-TR`.
-
-### `friday/brain.py`
-
-LLM orchestration layer. Gemini is the primary model:
-
-- Default Gemini model: `gemini-2.5-flash`
-- Default OpenAI fallback model: `gpt-4.1-mini`
-- Tool calling is enabled for both Gemini and OpenAI.
-- The system prompt requires Turkish, short answers, and real tool calls before
-  claiming an action was completed.
-
-### `friday/tools/actions.py`
-
-General assistant tools:
-
-- Open and close Windows applications.
-- Create folders and delete files/folders.
-- Open websites.
-- Get current time and system stats.
-- Fetch weather, Turkish news, world news, and web search results.
-- Control volume and media keys.
-- Discover installed apps from Start Menu shortcuts and the Windows registry.
-
-### `friday/tools/desktop.py`
-
-Desktop control tools using `pyautogui` and Gemini Vision:
-
-- Type text.
-- Press keys and hotkeys.
-- Click and right-click coordinates.
-- Scroll and wait.
-- Look at the screen with Gemini Vision.
-- Find a UI element from a screenshot and click it.
-- Write files directly or open them in Notepad.
-
-### `friday/live_audio.py`
-
-Gemini Native Audio mode. It streams microphone PCM directly to Gemini Live and
-plays PCM audio responses back through `sounddevice`.
-
-This mode bypasses the classic STT/TTS path:
-
-```text
-microphone PCM -> Gemini Live API -> audio response -> speakers
+```
+  ┌────────────────────────────────────────────────────────┐
+  │  Layer 1 — Expression                                   │
+  │                                                        │
+  │  Mind Stone     learns your communication style        │
+  │  Echo Stone     detects whether explanations landed    │
+  │                                                        │
+  │  Together: delivery that calibrates and validates      │
+  │  itself every turn.                                    │
+  ├────────────────────────────────────────────────────────┤
+  │  Layer 2 — Context                                     │
+  │                                                        │
+  │  Bond Stone     builds a persistent model of your      │
+  │                 world — projects, stack, constraints,  │
+  │                 preferences — across every session.    │
+  ├────────────────────────────────────────────────────────┤
+  │  Layer 3 — Prediction                                  │
+  │                                                        │
+  │  Intuition Stone  learns where your conversations      │
+  │                   go. Prepares answers before          │
+  │                   you finish asking.                   │
+  └────────────────────────────────────────────────────────┘
 ```
 
-### `friday/tts_engine.py`
+These four modules are built as standalone open-source tools.  
+→ **[Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones)** — the full collection.
 
-Text-to-speech fallback chain:
+---
 
-1. Fish Audio, if `FISH_AUDIO_API_KEY` is configured.
-2. `edge-tts`, using `FRIDAY_TTS_VOICE`.
-3. `pyttsx3`, offline Windows fallback.
+## Voice
 
-## Environment
+Two voice modes, one interface.
 
-Create a local `.env` file from `.env.example` and fill the keys you use.
+**Gemini Live Audio** (default)
+- Native real-time audio — no chunking, no latency pipeline
+- Natural interruption (barge-in) support
+- Continuous session with full context
 
-Important variables used by the current code:
+**Local Voice Pipeline** (offline fallback)
+- STT: faster-whisper (small model, CPU)
+- TTS: edge-tts `tr-TR-AhmetNeural` — Neural Turkish voice
+- Sentence-level streaming: first sentence speaks before the rest generates
+- VAD-based mic detection — no push-to-talk
 
-```env
-GEMINI_API_KEY=
-GOOGLE_API_KEY=
-OPENAI_API_KEY=
-GEMINI_LLM_MODEL=gemini-2.5-flash
-OPENAI_LLM_MODEL=gpt-4.1-mini
-FISH_AUDIO_API_KEY=
-FISH_AUDIO_VOICE_ID=
-FRIDAY_TTS_VOICE=tr-TR-EmelNeural
-FRIDAY_TTS_RATE=+6%
-FRIDAY_TTS_PITCH=+0Hz
-FRIDAY_TTS_VOLUME=+0%
+```
+  You speak
+      │
+      ├── VAD detects voice
+      │
+      ├── faster-whisper transcribes
+      │
+      ├── SafeBrainRouter routes
+      │         ├── Simple / fast → Ollama (qwen2.5, local)
+      │         └── Complex / research → GPT-4.1-mini / Gemini
+      │
+      └── edge-tts speaks — sentence by sentence
 ```
 
-`GEMINI_API_KEY` or `GOOGLE_API_KEY` is required for the main Gemini brain,
-Gemini Vision tools, and Live Audio mode. `OPENAI_API_KEY` is only needed for the
-fallback path.
+---
 
-## Command Flow
+## Memory
 
-Normal text flow:
+Five-category persistent memory system. Not a chat log — structured knowledge.
 
-```text
-user text
-  -> app_new.py
-  -> Brain.process()
-  -> Gemini/OpenAI
-  -> tool calls when needed
-  -> assistant response
-  -> TTS
+| Category | Stored |
+|----------|--------|
+| `FACT` | Things that are objectively true |
+| `PREFERENCE` | How you like things done |
+| `CONTEXT` | Your projects, setup, environment |
+| `SKILL` | Things F.R.I.D.A.Y. learned it can do for you |
+| `RELATIONSHIP` | People and their roles in your world |
+
+Recall is semantic — TF-IDF with embedding-based backfill.  
+The most relevant memories surface automatically before each response.
+
+---
+
+## Tools
+
+Organized by what they control.
+
+### Desktop & UI
+| Tool | What it does |
+|------|-------------|
+| `open_application` | Dynamic app discovery via Start Menu + registry |
+| `close_application` | Close by process name |
+| `look_at_screen` | Screenshot → Gemini Vision → answer |
+| `find_and_click` | Screenshot → AI locates element → clicks it |
+| `type_text` | Type into active window |
+| `press_key` | Keyboard combos (`ctrl+c`, `alt+f4`, etc.) |
+| `click_at / right_click_at` | Pixel-level mouse control |
+| `scroll` | Scroll up/down/left/right |
+
+### Window Management
+| Tool | What it does |
+|------|-------------|
+| `list_windows` | All open windows with titles |
+| `focus_window` | Bring window to front |
+| `minimize_window` | Minimize by title (partial match) |
+| `maximize_window` | Maximize by title |
+| `close_window` | Close by title |
+| `set_window_size` | Resize to exact dimensions |
+
+### System Control
+| Tool | What it does |
+|------|-------------|
+| `get_system_stats` | CPU, RAM, disk, GPU usage |
+| `list_processes` | Running processes sorted by memory/CPU |
+| `kill_process` | End process by name or PID |
+| `get_process_info` | Detailed info on a specific process |
+| `get_clipboard / set_clipboard` | Read and write clipboard |
+| `set_volume / volume_up / volume_down / mute_volume` | Audio control |
+| `media_play_pause / media_next / media_prev` | Media keys |
+| `lock_screen / sleep_mode` | Power states |
+| `shutdown_computer / restart_computer / cancel_shutdown` | Power management |
+| `run_powershell` | Execute PowerShell command |
+
+### Files & Filesystem
+| Tool | What it does |
+|------|-------------|
+| `find_file` | Recursive file search |
+| `list_folder` | Directory listing with sizes |
+| `read_file` | Read text file content |
+| `write_text_file` | Create/overwrite file |
+| `open_and_write_file` | Write then open in default app |
+| `rename_file / move_file / copy_file` | File operations |
+| `delete_file_safe` | Safe delete with confirmation |
+| `get_file_info` | Size, timestamps, permissions |
+| `create_folder` | Create directory |
+
+### Web & Information
+| Tool | What it does |
+|------|-------------|
+| `search_web` | Web search with snippets |
+| `get_weather` | Weather for any location |
+| `get_turkish_news` | Turkish news headlines via RSS |
+| `get_world_news` | International news headlines |
+| `open_website` | Open URL in default browser |
+
+### Browser Automation
+| Tool | What it does |
+|------|-------------|
+| `youtube_search` | Search YouTube, open results |
+| `youtube_play` | Find and play a video (Playwright) |
+| `google_search` | Google search in browser |
+
+### Reminders & Notes
+| Tool | What it does |
+|------|-------------|
+| `set_reminder` | Timed reminder with Windows notification + voice |
+| `list_reminders` | All pending reminders |
+| `cancel_reminder` | Cancel by ID |
+| `take_note` | Timestamped note to desktop file |
+| `read_notes` | Read all notes |
+| `clear_notes` | Clear note file |
+
+### Memory Tools
+| Tool | What it does |
+|------|-------------|
+| `remember_this` | Store a fact explicitly |
+| `recall_memory` | Semantic search over memory |
+| `forget_memory` | Remove a specific memory |
+| `memory_stats` | Memory store overview |
+
+### Steam
+| Tool | What it does |
+|------|-------------|
+| `steam_open_library` | Open Steam library |
+| `steam_list_installed` | List all installed games |
+| `steam_launch_game` | Launch by name (`steam://rungameid`) |
+
+---
+
+## Proactive System
+
+F.R.I.D.A.Y. doesn't only respond — it watches.
+
+| Trigger | Action |
+|---------|--------|
+| RAM usage > threshold | Windows notification + voice alert |
+| CPU usage > threshold | Windows notification + voice alert |
+| Battery low | Voice warning |
+| Morning briefing time | News + weather + agenda summary |
+| Reminder fires | Windows notification + voice |
+| Detected routine | Suggests automating it |
+
+Routine detection learns from usage patterns: if you do the same sequence 3+ times across 2+ days, F.R.I.D.A.Y. suggests turning it into a remembered command.
+
+---
+
+## Model Routing
+
+```
+  User input
+      │
+      ├── Intent parser (qwen2.5:3b — fast, local)
+      │         ├── Desktop/system command → direct tool call
+      │         ├── Simple question → Ollama (qwen2.5:7b)
+      │         └── Complex / research → Brain (cloud)
+      │
+      └── Brain
+                ├── Standard queries → GPT-4.1-mini
+                ├── Reasoning tasks  → o4-mini
+                └── Vision / live    → Gemini
 ```
 
-Normal microphone flow:
+Cloud is used only when it matters. Local handles everything it can.
 
-```text
-microphone
-  -> sounddevice recording
-  -> SpeechRecognition Google STT
-  -> Brain.process()
-  -> tools/response
-  -> TTS
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/codedbyOzzy/ProjectFRIDAY
+cd ProjectFRIDAY/Desktop/Vision/JarvisBrain_v2
+
+pip install -r requirements.txt
+cp .env.example .env
+# Fill in your API keys in .env
+
+python app_new.py
 ```
 
-Live audio flow:
+**Required:**  
+- Python 3.9+  
+- Ollama running locally (`ollama pull qwen2.5`)  
+- At minimum one API key: OpenAI or Gemini
 
-```text
-microphone PCM
-  -> Gemini Live
-  -> optional tool calls
-  -> PCM audio response
-  -> speakers
+**Optional:**  
+- faster-whisper for offline STT  
+- Playwright for browser automation (`playwright install chromium`)
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| UI | PySide6 + QML |
+| Primary LLM | GPT-4.1-mini, o4-mini |
+| Reasoning LLM | o4-mini |
+| Local LLM | Ollama (qwen2.5:7b / :3b) |
+| Vision | Gemini Vision |
+| Live Audio | Gemini Live Audio API |
+| STT | faster-whisper (small, CPU) |
+| TTS | edge-tts — tr-TR-AhmetNeural |
+| Memory | TF-IDF + embedding backfill |
+| Desktop Control | pyautogui + Win32 API |
+| Browser | Playwright (Chromium) |
+| Adaptive Intelligence | [Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones) |
+
+---
+
+## Files
+
+```
+app_new.py                   Entry point — Qt/QML UI, Gemini Live Audio default
+friday/
+  brain.py                   Cloud LLM (OpenAI + Gemini) + tool calling
+  router.py                  SafeBrainRouter — routing, streaming, stone observation
+  local_llm.py               Ollama integration with circuit breaker
+  live_audio.py              Gemini Live Audio (real-time native audio)
+  local_voice.py             Offline STT + TTS pipeline
+  memory.py                  5-category persistent memory with semantic recall
+  stt.py                     faster-whisper STT with health probe + fallbacks
+  tts_engine.py              edge-tts + pygame playback
+  persona.py                 Identity, system prompt factory, stone injection
+  mind_stone.py              Communication style learner
+  echo_stone.py              Comprehension pattern detector
+  bond_stone.py              Persistent user world model
+  intuition_stone.py         Conversation arc predictor
+  tools/
+    actions.py               App launch, web, weather, news, volume, media
+    desktop.py               Screenshot, vision click, keyboard, mouse
+    system_control.py        Windows, processes, clipboard, power
+    filesystem.py            File operations
+    browser_automation.py    YouTube, Google (Playwright)
+    reminder.py              Timed reminders with notifications
+    quick_notes.py           Desktop note file
+    memory_tools.py          Memory CRUD tools
+    steam_tools.py           Steam game management
+    system_alerts.py         Proactive RAM/CPU/battery watcher
+qt_ui/
+  Main.qml                   Iron Man HUD — reactor animation, voice waveform
 ```
 
-## Desktop Capabilities
+---
 
-The assistant can currently perform direct desktop actions, including:
+## Roadmap
 
-- `open_application`
-- `close_application`
-- `create_folder`
-- `delete_file`
-- `open_website`
-- `get_weather`
-- `get_turkish_news`
-- `get_world_news`
-- `search_web`
-- `set_volume`, `volume_up`, `volume_down`, `mute_volume`
-- `media_play_pause`, `media_next`, `media_prev`
-- `type_text`
-- `press_key`
-- `click_at`
-- `right_click_at`
-- `look_at_screen`
-- `find_and_click`
-- `write_text_file`
-- `open_and_write_file`
+| Feature | Status |
+|---------|--------|
+| Core architecture | ✅ Done |
+| Persistent memory | ✅ Done |
+| Voice interaction | ✅ Done |
+| Desktop control | ✅ Done |
+| Proactive system | ✅ Done |
+| 4-Stone adaptive intelligence | ✅ Done |
+| Model routing + circuit breaker | ✅ Done |
+| Gemini Live Audio | ✅ Done |
+| Skills / plugin system | 🔄 In progress |
+| Telegram remote access | 🔄 In progress |
+| Test suite | 🔄 In progress |
+| Public beta | 📋 Planned |
 
-## Known Gaps
+---
 
-- README previously referenced `server.py`, `agent_friday.py`, `app_qt.py`,
-  `start.ps1`, and `.bat` launchers. Those files are not present in this
-  current folder.
-- `.env.example` still contains some provider options for Ollama, faster-whisper,
-  LiveKit, and MCP that are not wired into the current `app_new.py` path.
-- High-risk desktop actions are currently direct tool calls. There is no active
-  confirmation token or arming policy in the present implementation.
-- `pyautogui.FAILSAFE` is disabled in `desktop.py`, so mouse automation should be
-  used carefully.
-- The speech-to-text button depends on Google STT through `SpeechRecognition`;
-  offline faster-whisper is listed in dependencies but not used by this UI path.
+## Related
 
-## Suggested Next Steps
+**[Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones)** — The adaptive intelligence modules (Mind Stone, Echo Stone, Bond Stone, Intuition Stone) as a standalone, zero-dependency open-source library.  
+Each stone is a drop-in Python module. No framework required.
 
-- Add a safety/permission layer before destructive or high-risk desktop tools.
-- Align `.env.example` with the actual runtime path or implement the provider
-  switches it documents.
-- Add simple launch scripts for Windows if double-click startup is desired.
-- Add a small smoke test for tool schema generation and basic tool calls.
+---
+
+## Showcase
+
+**[showcasefridayv2.netlify.app](https://showcasefridayv2.netlify.app)**
+
+---
+
+*"I am F.R.I.D.A.Y. How can I assist you today?"*

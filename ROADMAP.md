@@ -7,9 +7,9 @@ Development status and direction. This reflects what is actually built.
 ## What Is Working Now
 
 ### Voice
-- [x] Gemini Live Audio — native real-time audio session, primary mode
 - [x] Continuous microphone listening with voice activity detection
-- [x] faster-whisper local STT (offline capable, CPU)
+- [x] Google STT (SpeechRecognition, cloud) — primary, Turkish optimized
+- [x] faster-whisper local STT (offline fallback, CPU)
 - [x] Hallucination filtering (foreign characters, Whisper artifacts, repetition)
 - [x] Barge-in: interrupt F.R.I.D.A.Y. mid-sentence by speaking
 - [x] Echo suppression after TTS playback

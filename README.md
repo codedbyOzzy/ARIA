@@ -20,7 +20,7 @@ Instead of relying on a single model or API, it uses **multi-model orchestration
 
 ## Key Features
 
-- **Real-time voice interaction** — Gemini Live Audio (native) + faster-whisper local fallback
+- **Real-time voice interaction** — Google STT + faster-whisper offline fallback + Neural TTS
 - **Multi-model routing** — GPT-4.1-mini · o4-mini · Gemini 2.5 · Ollama
 - **50+ integrated tools** — desktop control, web research, memory, Steam, browser automation, and more
 - **Persistent memory** — 5-category semantic memory that evolves with you across sessions
@@ -98,7 +98,9 @@ The goal is an interface that feels alive, not like a browser tab.
 ```
   app_new.py — PySide6 + QML Iron Man HUD
        │
-       ├── Gemini Live Audio  (default: native real-time audio)
+       ├── Voice Pipeline
+       │       ├── STT: Google STT → faster-whisper (offline fallback)
+       │       └── TTS: edge-tts tr-TR-AhmetNeural + pygame
        │
        └── SafeBrainRouter
                ├── Brain (GPT-4.1-mini / o4-mini / Gemini)
@@ -110,13 +112,13 @@ The goal is an interface that feels alive, not like a browser tab.
 | Layer | Technology |
 |-------|------------|
 | UI | PySide6 + QML (Qt 6) |
-| Voice Input | Gemini Live Audio · faster-whisper (local) |
+| Voice Input | Google STT · faster-whisper (offline fallback) |
 | Primary LLM | OpenAI GPT-4.1-mini |
 | Reasoning LLM | OpenAI o4-mini |
 | Local LLM | Ollama (qwen2.5:7b) |
 | Fallback LLM | Google Gemini 2.5 Flash |
 | Vision | Gemini Vision (screen analysis) |
-| Voice Output | edge-tts tr-TR-AhmetNeural · pyttsx3 fallback |
+| Voice Output | edge-tts tr-TR-AhmetNeural + pygame |
 | Memory | TF-IDF + semantic embeddings · JSON store |
 | Desktop Control | Win32 API · pyautogui |
 | Adaptive Intelligence | [Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones) |

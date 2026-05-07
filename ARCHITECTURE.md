@@ -12,15 +12,14 @@ A high-level overview of how the system is structured. Implementation details ar
 │   Animated orb · Chat log · Status · Mic controls        │
 └───────────────────────────┬──────────────────────────────┘
                             │ user input (voice or text)
-             ┌──────────────┴──────────────┐
-             ▼                             ▼
-┌────────────────────┐       ┌──────────────────────────┐
-│  Gemini Live Audio │       │   Local Voice Pipeline   │
-│  (native real-time │       │   VAD -> faster-whisper  │
-│   audio session)   │       │   -> edge-tts streaming  │
-└────────────────────┘       └──────────────────────────┘
-             │                             │
-             └──────────────┬──────────────┘
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│                    Voice Pipeline                         │
+│                                                          │
+│   STT: Google STT (internet) -> faster-whisper (offline) │
+│   TTS: edge-tts tr-TR-AhmetNeural + pygame               │
+│   Barge-in: RMS monitor during playback                  │
+└───────────────────────────┬──────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────┐
 │                    SafeBrainRouter                        │
@@ -64,17 +63,12 @@ Conversation history is displayed in a scrollable log alongside the orb. The UI 
 
 ## Voice Layer
 
-Two modes, one interface.
+**Speech-to-Text:** Microphone input is processed by a voice activity detection loop. When a complete utterance is captured, it is sent for transcription in priority order:
 
-### Gemini Live Audio (default)
+1. **Google STT** (SpeechRecognition, cloud) — fast, accurate for Turkish
+2. **faster-whisper** (local, CPU) — offline fallback when internet is unavailable
 
-Native real-time audio session with Google's Gemini API. No chunking, no intermediate transcription — audio flows directly into the model and responses stream back as audio. Natural interruption (barge-in) is supported natively. This is the primary mode.
-
-### Local Voice Pipeline (offline fallback)
-
-A full STT → LLM → TTS chain that runs locally when Gemini Live Audio is unavailable.
-
-**Speech-to-Text:** Microphone input is processed by a voice activity detection loop. When a complete utterance is captured, it is sent to faster-whisper (local, CPU) for transcription. Hallucination filtering runs on all results.
+Hallucination filtering runs on all results.
 
 **Barge-in:** A background thread monitors the microphone during TTS playback. If the RMS exceeds a threshold, playback stops immediately and the new utterance is processed.
 

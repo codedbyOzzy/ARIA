@@ -1,187 +1,229 @@
-# F.R.I.D.A.Y. — System Architecture
+# FRIDAY Synapse — System Architecture
 
 A high-level overview of how the system is structured. Implementation details are intentionally omitted.
 
 ---
 
-## Layer Overview
+## Philosophy
+
+FRIDAY Synapse is not built as a monolithic app with a chatbot embedded inside it. It's designed as a **cognitive operating layer** — a set of specialized modules running in parallel, each owning a specific domain of intelligence, communicating through a shared event bus.
+
+This architecture makes the system:
+- **Composable** — new capabilities are new stones, not patches to existing code
+- **Resilient** — one module failing doesn't cascade to others
+- **Observable** — every event is typed, named, and traceable
+
+---
+
+## The BrainCore Event Bus
+
+The central nervous system of FRIDAY Synapse.
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                  Desktop UI (Qt 6 / QML)                 │
-│   Animated orb · Chat log · Status · Mic controls        │
-└───────────────────────────┬──────────────────────────────┘
-                            │ user input (voice or text)
-                            ▼
-┌──────────────────────────────────────────────────────────┐
-│                    Voice Pipeline                         │
-│                                                          │
-│   STT: Google STT (internet) -> faster-whisper (offline) │
-│   TTS: edge-tts tr-TR-AhmetNeural + pygame               │
-│   Barge-in: RMS monitor during playback                  │
-└───────────────────────────┬──────────────────────────────┘
-                            ▼
-┌──────────────────────────────────────────────────────────┐
-│                    SafeBrainRouter                        │
-│                                                          │
-│   Fast / conversational  ->  GPT-4.1-mini               │
-│   Deep reasoning         ->  o4-mini                    │
-│   Offline / free         ->  Ollama (qwen2.5)           │
-│   Cloud unavailable      ->  Gemini 2.5 Flash           │
-└───────────┬───────────────────────────┬──────────────────┘
-            │                           │
-            ▼                           ▼
-┌──────────────────┐         ┌────────────────────────┐
-│   50+ Tools      │         │   Memory System        │
-│   parallel exec  │         │   5-category store     │
-│   per-tool       │         │   semantic retrieval   │
-│   timeout guard  │         │   auto-extraction      │
-└──────────────────┘         └────────────────────────┘
-            │
-            ▼
-┌──────────────────────────────────────────────────────────┐
-│              4-Stone Adaptive Intelligence                │
-│                                                          │
-│  Mind Stone      learns how you communicate              │
-│  Echo Stone      detects whether it worked               │
-│  Bond Stone      builds a model of your world            │
-│  Intuition Stone predicts where the conversation goes    │
-└──────────────────────────────────────────────────────────┘
+BrainCore
+    │
+    ├── register_stone(stone)     ← adds a module to the system
+    ├── dispatch(event)           ← broadcasts a typed event to all stones
+    ├── initialize_all()          ← starts all stones in dependency order
+    └── shutdown_all()            ← graceful teardown on app exit
+```
+
+Every stone subscribes to the events it cares about. No stone directly calls another. All communication passes through the bus.
+
+Events are typed `StoneEvent` objects with:
+- `name` — the event type (e.g. `USER_SPOKE`, `SPEAK_TEXT`, `FILE_DROPPED`)
+- `source` — which stone or system originated it
+- `payload` — structured data dictionary
+
+---
+
+## Intelligence Stones
+
+### EchoStone
+**Domain:** Memory, behavior analysis, conversation continuity
+
+- Loads and manages the persistent memory store on startup
+- Intercepts `USER_SPOKE` events to extract and store new memories
+- Provides memory context retrieval for LogicStone before each LLM call
+- Detects rephrase loops — when the user re-asks the same thing differently
+
+---
+
+### VoiceStone
+**Domain:** Audio input/output pipeline
+
+- Manages continuous microphone listening via webrtcvad (VAD)
+- STT chain: Groq Whisper (primary) → faster-whisper (offline fallback)
+- Dispatches `USER_SPOKE` events when speech is transcribed
+- Handles TTS output via edge-tts Neural TTS + pygame streaming
+- Implements barge-in: stops current speech if new input detected
+- Echo suppression: ignores input while FRIDAY is speaking
+
+```
+Microphone → webrtcvad → speech buffer → Groq Whisper → USER_SPOKE event
+SPEAK_TEXT event → edge-tts → pygame streaming playback
 ```
 
 ---
 
-## Desktop UI
+### VisionStone
+**Domain:** Visual context — screen capture and image analysis
 
-Built with Qt 6 / QML. Runs as a native Windows application — no browser, no web runtime.
-
-The visual centerpiece is a Canvas-rendered animated orb: a living, organic shape that breathes slowly at rest, reacts to incoming audio levels, and pulses with expanding radiate rings when speaking. All animation runs at 60 fps.
-
-Conversation history is displayed in a scrollable log alongside the orb. The UI communicates with the backend entirely through Qt signals — no polling, no shared state. Typed and voice commands share the same processing pipeline.
-
----
-
-## Voice Layer
-
-**Speech-to-Text:** Microphone input is processed by a voice activity detection loop. When a complete utterance is captured, it is sent for transcription in priority order:
-
-1. **Google STT** (SpeechRecognition, cloud) — fast, accurate for Turkish
-2. **faster-whisper** (local, CPU) — offline fallback when internet is unavailable
-
-Hallucination filtering runs on all results.
-
-**Barge-in:** A background thread monitors the microphone during TTS playback. If the RMS exceeds a threshold, playback stops immediately and the new utterance is processed.
-
-**Text-to-Speech:** Responses synthesized with Microsoft edge-tts (`tr-TR-AhmetNeural`, Neural Turkish voice). Playback uses pygame with a producer-consumer architecture: as the LLM streams sentence N, the producer is already synthesizing sentence N+1. First audio typically plays within 1-2 seconds of the model starting to respond.
+- Screenshot capture on demand
+- Screen region selection
+- Routes image data to Gemini Vision API for analysis
+- Triggered via `LOOK_AT_SCREEN` or `FILE_DROPPED` events
 
 ---
 
-## LLM Router
+### ActionStone
+**Domain:** OS-level execution
 
-The router classifies each query before routing:
+- Win32 API calls: window minimize/maximize/close/focus
+- PyAutoGUI: mouse movement, clicks, keyboard input
+- PowerShell execution for system-level operations
+- File system: create, read, write, delete, search
+- Application launch via Start Menu discovery cache
 
-| Path | Used when | Model |
-|------|-----------|-------|
-| Local | Short, conversational, offline queries | Ollama qwen2.5 |
-| Fast cloud | General queries, tool use, research | GPT-4.1-mini |
-| Reasoning | Complex problems, debugging, strategy | o4-mini |
-| Fallback | OpenAI unavailable | Gemini 2.5 Flash |
+---
 
-A circuit breaker monitors the local model. If it degrades, the router falls back to cloud automatically and silently.
+### WebStone
+**Domain:** Internet access and live data
+
+Three-tier search system:
+1. `search_web` — fast metadata + snippets (~280 chars per result)
+2. `read_webpage` — full content extraction from a specific URL
+3. `search_and_read` — search + reads the best result in full
+
+Also handles:
+- Weather (OpenWeatherMap)
+- News (Turkish and world)
+- Clipboard read/write
+
+---
+
+### LogicStone
+**Domain:** Decision-making, LLM routing, tool orchestration
+
+The orchestrator of FRIDAY Synapse. Every `USER_SPOKE` event flows here.
+
+```
+USER_SPOKE
+    │
+    ├── 1. Request memory context from EchoStone
+    ├── 2. Route to appropriate LLM:
+    │       ├── GPT-4.1-mini   (standard, tools enabled)
+    │       ├── o4-mini        (complex reasoning, no tools)
+    │       ├── Ollama local   (offline mode)
+    │       └── Gemini 2.5     (fallback)
+    ├── 3. Execute tool calls in parallel (ThreadPoolExecutor)
+    ├── 4. Synthesize final response
+    └── 5. Dispatch SPEAK_TEXT event
+```
+
+Tool results are processed in parallel — multi-tool responses have no sequential bottleneck.
+
+---
+
+### MindStone
+**Domain:** Adaptive communication style
+
+Observes each interaction and builds a behavioral profile:
+- Response length preference (short vs. detailed)
+- Tone preference (formal vs. casual)
+- Technical depth expectation
+- Reaction to humor
+
+Injects a style directive into every LLM prompt, gradually shifting FRIDAY's communication toward the user's observed preferences.
+
+---
+
+## ProactiveEngine
+
+Runs as a background daemon thread. Not part of the event bus — it *emits* events rather than consuming them.
+
+```
+On startup (after 6s delay):
+  → build_startup_brief() — time + reminders + system status
+  → dispatch SPEAK_TEXT
+
+Every 30s:
+  → Check idle time
+  → If idle > 25 min and no recent warning:
+      → Surface best unsurfaced memory/thought, or
+      → Dispatch presence notification
+
+Reminder callbacks:
+  → Registered at startup
+  → Fire SPEAK_TEXT at exact scheduled time
+```
+
+---
+
+## Voice Threading Model
+
+```
+Main Thread          Audio Thread          Worker Thread
+     │                    │                     │
+  Qt UI loop          webrtcvad             LLM calls
+  Event dispatch      Speech buffer         Tool execution
+  QML rendering       STT pipeline          TTS generation
+                      Barge-in detection
+```
+
+Audio capture and speech processing run on a dedicated daemon thread. LLM inference and tool execution run on a separate worker. The main thread handles only UI rendering and event dispatching.
+
+TTS uses a **producer-consumer pipeline**:
+- Producer: sentence splitter streams text chunks as LLM generates
+- Consumer: pygame playback begins on first sentence
+- Result: first word of speech plays 1-2 seconds after generation begins, not after full response
 
 ---
 
 ## Memory System
 
-A file-backed persistent store. Every entry has:
-
-- `content` — the fact in plain text
-- `category` — one of: `preference`, `fact`, `context`, `skill`, `relationship`
-- `importance` — 0-1 score used to prioritize retrieval
-- `tags` — optional labels for fast filtering
-- `created_at` — timestamp
-
-**Auto-extraction** runs in a background thread after each conversation turn. A lightweight model analyzes the exchange and identifies new personal facts. Results are deduplicated before writing. A backup is created before every save.
-
-**Retrieval** is semantic: TF-IDF with embedding-based backfill. The most relevant memories surface automatically into the model's context window before each response. The model can also trigger explicit `remember`, `recall`, and `forget` calls mid-conversation.
-
----
-
-## Tool System
-
-Tools are Python functions registered with the LLM. The model decides when to call them.
-
-Execution is parallel: if the model calls multiple tools in one turn, they run concurrently. Each tool has a per-call timeout — a hanging tool does not block the conversation.
-
-| Category | Tools |
-|----------|-------|
-| Desktop | open/close/minimize/maximize/focus apps and windows |
-| Vision | screenshot + Gemini vision analysis, AI-guided click |
-| Input | type text, press key combos, mouse click, scroll |
-| System | CPU/RAM/disk/battery stats, process management, clipboard |
-| Power | volume, media controls, lock, sleep, shutdown |
-| Files | read, write, create, rename, move, copy, delete |
-| Web | search, read page, Turkish news, world news, weather |
-| Browser | YouTube search/play, Google search (Playwright) |
-| Memory | remember, recall, forget, memory stats |
-| Reminders | set, list, cancel — fires as voice announcement |
-| Notes | timestamped desktop note file |
-| Steam | open library, list installed games, launch by name |
-| Code | run Python code, run Python file |
-| Proactive | background RAM/CPU/battery monitor with voice alerts |
-
----
-
-## 4-Stone Adaptive Intelligence
-
-Four lightweight modules injected into the system prompt, each adding one layer of genuine understanding.
-
 ```
-Mind Stone      observes every turn -> builds a communication style profile
-                -> directive: "Keep it short. Lead with code."
-
-Echo Stone      measures reaction to each response
-                -> detects: false confirmation, rephrase, overload, deepening
-                -> directive: "This user often confirms without understanding.
-                               Check comprehension before moving on."
-
-Bond Stone      extracts who the user is across all sessions
-                -> tracks: stack, projects, constraints, preferences
-                -> directive: "Stack: Python, CUDA, Ollama.
-                               Project: Vision. No cuBLAS installed."
-
-Intuition Stone learns which topics consistently follow which others
-                -> predicts follow-up questions before they are asked
-                -> directive: "CUDA questions are often followed by memory
-                               questions. Consider addressing it proactively."
+MemoryStore
+    │
+    ├── Categories: PREFERENCE · FACT · EVENT · GOAL · CONTEXT
+    ├── Retrieval:  TF-IDF (primary) → OpenAI embeddings (if key available)
+    ├── Storage:    JSON file, auto-backup on each write
+    ├── Dedup:      cosine similarity threshold (configurable)
+    └── Decay:      importance scores decay over time, critical memories persist
 ```
 
-All four stones are zero-dependency Python modules available as open-source:
-[Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones)
+Memories are extracted automatically during conversation by the EchoStone's LLM-based extraction pipeline. No manual tagging required.
 
 ---
 
-## Proactive Engine
+## Routing Logic
 
-A background engine that runs while the assistant is active:
+```
+Is it a simple conversational reply?
+  └── GPT-4.1-mini (streaming, tools enabled)
 
-| Trigger | Action |
-|---------|--------|
-| Session start | Greeting + current time + system state (direct TTS, no LLM call) |
-| RAM/CPU above threshold | Windows notification + voice alert |
-| Battery low | Voice warning |
-| Reminder fires | Voice announcement at scheduled time |
-| Routine detected (3+ days) | Suggests automating the pattern |
+Does it require deep reasoning, code analysis, or multi-step planning?
+  └── o4-mini (no streaming, thinking mode)
+
+Is offline mode active or API quota exceeded?
+  └── Ollama local (qwen2.5:7b or qwen2.5:3b for intent)
+
+Did OpenAI fail 3+ consecutive times?
+  └── Gemini 2.5 Flash (automatic, silent)
+```
+
+Circuit breaker prevents cascading failures to local model. Failure counters reset on successful calls.
 
 ---
 
-## What Is Not Described Here
+## Key Design Decisions
 
-The following are intentionally excluded from this public document:
+**No direct stone-to-stone calls.** Everything through the event bus. This makes the system debuggable — every interaction is a named, logged event.
 
-- System prompt content and persona definition
-- Routing thresholds and decision logic
-- Memory extraction prompts
-- Tool implementation code
-- Authentication and API configuration
-- Personal user data and memory contents
+**Parallel tool execution.** Multiple tool calls from a single LLM response run concurrently via `ThreadPoolExecutor`. Latency scales with the slowest tool, not the sum.
+
+**Streaming TTS from sentence 1.** The response pipeline splits on sentence boundaries and begins audio playback before the LLM has finished generating. Perceived response time is dramatically lower than the actual generation time.
+
+**Memory is always on.** There's no "remember this" mode. Every conversation is observed by EchoStone. Important information is extracted and stored automatically.
+
+**Proactive by default.** FRIDAY Synapse doesn't wait to be addressed. It monitors, surfaces, and notifies — within boundaries the user can configure.

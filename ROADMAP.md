@@ -1,107 +1,126 @@
-# F.R.I.D.A.Y. — Roadmap
+# FRIDAY Synapse — Roadmap
 
-Development status and direction. This reflects what is actually built.
+What's done, what's in progress, and where this is going.
 
 ---
 
-## What Is Working Now
+## What's Working Now
 
 ### Voice
-- [x] Continuous microphone listening with voice activity detection
-- [x] Google STT (SpeechRecognition, cloud) — primary, Turkish optimized
-- [x] faster-whisper local STT (offline fallback, CPU)
-- [x] Hallucination filtering (foreign characters, Whisper artifacts, repetition)
-- [x] Barge-in: interrupt F.R.I.D.A.Y. mid-sentence by speaking
-- [x] Echo suppression after TTS playback
+- Continuous microphone listening with webrtcvad (frame-level VAD)
+- Dual STT: Groq Whisper (cloud) → faster-whisper (offline fallback)
+- Barge-in interruption — speak while FRIDAY is speaking, it stops and listens
+- Echo suppression — doesn't pick up its own TTS output as input
+- Streaming Neural TTS (edge-tts) — speech starts on sentence 1, not after full response
+- Offline TTS fallback (pyttsx3)
 
-### Text-to-Speech
-- [x] Microsoft Neural TTS (edge-tts, tr-TR-AhmetNeural)
-- [x] Producer-consumer streaming: sentence N+1 generates while sentence N plays
-- [x] Barge-in stop signal propagated to playback
-- [x] Offline pyttsx3 fallback
-
-### LLM and Routing
-- [x] Per-query routing between local and cloud models
-- [x] Local path: Ollama qwen2.5, streaming, rolling conversation history
-- [x] Cloud path: GPT-4.1-mini with streaming and tool calling
-- [x] Reasoning path: o4-mini for complex queries
-- [x] Gemini 2.5 Flash fallback when OpenAI is unavailable
-- [x] Circuit breaker on local model (auto-fallback on degradation)
-- [x] Intent parsing with a fast 3B model before routing
+### Intelligence & Routing
+- Per-query LLM routing: GPT-4.1-mini / o4-mini / Ollama / Gemini 2.5
+- Parallel tool execution (ThreadPoolExecutor — multiple tools, one round-trip)
+- Intent-based routing — detects reasoning tasks, sends to o4-mini automatically
+- Circuit breaker — protects local model from cascading failures
+- Streaming LLM responses with real-time TTS handoff
 
 ### Memory
-- [x] 5-category persistent store: preference, fact, context, skill, relationship
-- [x] Importance scoring (0.0-1.0) per entry
-- [x] Semantic retrieval with TF-IDF + embedding backfill
-- [x] Auto-extraction after each conversation turn (background, LLM-powered)
-- [x] Duplicate detection before writing
-- [x] Automatic backup before every save
+- 5-category persistent store: preference, fact, event, goal, context
+- Importance scoring + time-decay
+- Semantic retrieval: TF-IDF (offline) or OpenAI embeddings (when available)
+- Auto-extraction — memories pulled from conversation without explicit commands
+- Duplicate detection with configurable similarity threshold
+- Automatic JSON backup on every write
 
-### Tools
-- [x] Parallel tool execution with per-tool timeout
-- [x] Desktop: open/close/minimize/maximize/focus apps and windows
-- [x] Vision: screenshot + Gemini analysis, AI-guided element click
-- [x] System: CPU, RAM, disk, battery, process management
-- [x] Clipboard: read, write, process contents
-- [x] Files: read, write, create, rename, move, copy, delete
-- [x] Web: search, read page, Turkish news, world news, weather
-- [x] Browser automation: YouTube search/play, Google search (Playwright)
-- [x] Memory tools: remember, recall, forget, stats
-- [x] Reminders: set, list, cancel with voice announcement on fire
-- [x] Quick notes: timestamped desktop note file
-- [x] Steam: library, installed games list, launch by name
-- [x] Code execution: run Python code and files inline
-- [x] Proactive alerts: background RAM/CPU/battery watcher
+### Desktop Tools (50+)
+- Application launch (Start Menu discovery + cache)
+- Window control: minimize, maximize, close, focus (Win32 API, <1ms)
+- Volume, display, system stats
+- Screenshot + Gemini Vision analysis
+- Clipboard: read, write, process (summarize, translate, fix, explain)
+- File system: create, read, write, delete, search content
+- Code execution: run Python inline or from file
+- Browser automation: Playwright (search, navigate, fill forms)
+- Steam integration: game launch, library search
+- Web: search, full article read, weather, news (Turkish + world)
 
-### Adaptive Intelligence (4-Stone System)
-- [x] Mind Stone — communication style learning (verbosity, depth, examples)
-- [x] Echo Stone — comprehension pattern detection (false confirmation, overload)
-- [x] Bond Stone — persistent user world model (stack, projects, constraints)
-- [x] Intuition Stone — conversation arc prediction (follow-up topic modeling)
-
-### UI
-- [x] Qt 6 / QML native Windows application
-- [x] Canvas-rendered animated orb (60 fps, breathing animation)
-- [x] Voice-reactive orb (expands with audio level)
-- [x] Speaking state: expanding radiate rings
-- [x] Scrollable conversation log
-- [x] Text input (typed messages bypass STT)
-- [x] Status indicators (listening / thinking / speaking / error)
+### Adaptive Intelligence (MindStone)
+- Communication style profiling (length, depth, tone, humor)
+- Per-session style directive injection into LLM prompts
+- Gradual adaptation — doesn't reset between sessions
 
 ### Proactive Engine
-- [x] Startup briefing: time + system status on every launch (direct TTS, no LLM)
-- [x] System alerts: RAM and battery warnings via direct TTS
-- [x] Reminder firing: scheduled voice announcements
-- [x] Routine detection: learns patterns across sessions
+- Startup briefing: time + active reminders + system status (RAM, battery)
+- Reminder fire notifications (voice + exact scheduling)
+- Idle-mode thought surfacing (pending memories and notes)
+- RAM/CPU/battery threshold alerts
+
+### UI
+- Qt 6 / QML native Windows app
+- Animated reactive orb (idle / listening / thinking / speaking states)
+- Voice waveform visualization
+- Real-time conversation log
+- Status overlay (current model, active tool, latency)
+- Drag & drop file analysis
 
 ---
 
-## What Is Next
+## In Progress
 
-### Short-term
-- [ ] Session conversation log (persist full history to disk across restarts)
-- [ ] Memory review UI (browse, edit, delete memories from the interface)
-- [ ] Voice speed control (real-time adjustment without restart)
-- [ ] Plugin/skill system (drop-in tool modules without modifying core)
+### English Language Support
+The model stack already handles English natively. The remaining work:
+- English persona and system prompt
+- English TTS voice (edge-tts Neural)
+- English STT language hint
+- Locale-aware UI strings
+- English startup briefing and proactive messages
 
-### Medium-term
-- [ ] Telegram remote access (control the desktop from your phone)
-- [ ] Offline-first mode (full functionality without internet)
-- [ ] Scheduled tasks ("every morning at 8, tell me the weather and news")
-- [ ] Conversation summary ("what did we talk about recently?")
+Target: bilingual at launch (Turkish + English)
 
-### Long-term
-- [ ] Multi-language support (while keeping Turkish as primary)
-- [ ] Cross-device memory sync (encrypted)
-- [ ] Custom TTS voice
-- [ ] Autonomous multi-step task execution with confirmation gates
+### First-Run Setup Wizard
+For non-technical users:
+- Language selection
+- API key entry (OpenAI required, others optional)
+- Voice/microphone setup
+- Name and preference configuration
+- Test run before main screen
+
+### Release Packaging
+- Single-file Windows installer
+- Auto-update mechanism
+- BYOK license system (users bring their own API keys)
+- Activation flow
 
 ---
 
-## Design Principles
+## Planned
 
-- **Turkish-first** — every layer is optimized for Turkish before other languages
-- **Local-capable** — core functionality works without cloud APIs; cloud enhances, not enables
-- **Private by default** — personal memory, credentials, and behavioral data never leave the local machine
-- **Fast first response** — the user hears F.R.I.D.A.Y. start talking within 1-2 seconds of finishing their sentence
-- **Adaptive** — the system learns communication preferences, not just commands
+### Short-Term (Pre-Launch)
+- Session conversation export
+- Memory review and edit UI
+- Voice speed and volume controls
+- Per-app window behavior profiles (e.g. always minimize on certain apps)
+
+### Medium-Term (Post-Launch)
+- Telegram remote access (control your PC from phone)
+- Scheduled task system (run X every day at Y)
+- Plugin / skill system (user-installable capability packs)
+- Offline-first mode improvements
+
+### Long-Term
+- Multi-language support beyond TR/EN
+- Cross-device memory sync
+- Custom TTS voice training
+- Autonomous multi-step task execution (planner + executor loop)
+- Mobile companion app
+
+---
+
+## What This Is Not
+
+FRIDAY Synapse is not a general-purpose cloud AI service. It is not trying to be ChatGPT with a desktop app wrapper.
+
+The goal is a **persistent, private, deeply integrated** AI system that gets better the longer you use it — something that knows your machine, your habits, and your preferences in a way that no stateless chatbot ever can.
+
+The architecture is designed around that goal. The memory system, the adaptive stones, the proactive engine — all of it exists to make the system more *yours* over time.
+
+---
+
+*Last updated: May 2026*

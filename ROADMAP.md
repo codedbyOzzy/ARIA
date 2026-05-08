@@ -60,46 +60,42 @@ What's done, what's in progress, and where this is going.
 - Status overlay (current model, active tool, latency)
 - Drag & drop file analysis
 
+### Language Support
+- Full English support — persona, TTS voice, STT, system prompts, UI strings
+- Full Turkish support — voice pipeline tuned specifically for Turkish
+- `FRIDAY_LANGUAGE=en` or `tr` in `.env` — switch at any time
+
+### Setup & Distribution
+- `setup.bat` one-click installer — checks Python, installs dependencies, validates API keys
+- `.env.example` template with full documentation in English
+- First-run setup wizard (SetupWizard.qml) — language, API key entry, voice test
+- BYOK model — users bring their own API keys, zero subscription
+
+### Telegram Remote Access
+- Full Telegram bot integration — control your PC from anywhere
+- Send commands via Telegram message, receive responses and screenshots
+- Works on any device with Telegram installed
+
 ---
 
 ## In Progress
 
-### English Language Support
-The model stack already handles English natively. The remaining work:
-- English persona and system prompt
-- English TTS voice (edge-tts Neural)
-- English STT language hint
-- Locale-aware UI strings
-- English startup briefing and proactive messages
-
-Target: bilingual at launch (Turkish + English)
-
-### First-Run Setup Wizard
-For non-technical users:
-- Language selection
-- API key entry (OpenAI required, others optional)
-- Voice/microphone setup
-- Name and preference configuration
-- Test run before main screen
-
 ### Release Packaging
-- Single-file Windows installer
+- Single-file Windows `.exe` installer (no Python required)
 - Auto-update mechanism
-- BYOK license system (users bring their own API keys)
-- Activation flow
+- License key activation flow
 
 ---
 
 ## Planned
 
-### Short-Term (Pre-Launch)
+### Short-Term (Post-Beta)
 - Session conversation export
 - Memory review and edit UI
 - Voice speed and volume controls
 - Per-app window behavior profiles (e.g. always minimize on certain apps)
 
-### Medium-Term (Post-Launch)
-- Telegram remote access (control your PC from phone)
+### Medium-Term
 - Scheduled task system (run X every day at Y)
 - Plugin / skill system (user-installable capability packs)
 - Offline-first mode improvements
@@ -123,4 +119,4 @@ The architecture is designed around that goal. The memory system, the adaptive s
 
 ---
 
-*Last updated: May 2026*
+*Last updated: May 9, 2026*

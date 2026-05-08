@@ -10,7 +10,7 @@
 
 <br/>
 
-![Status](https://img.shields.io/badge/Status-Early%20Access%20Soon-gold?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Beta%20Available-brightgreen?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D4?style=for-the-badge&logo=windows)
 ![AI](https://img.shields.io/badge/AI-Multi--Model%20Orchestration-8A2BE2?style=for-the-badge)
 
@@ -215,11 +215,13 @@ Full architecture details → [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## Language Support
 
-FRIDAY Synapse is currently **Turkish-optimized** — the voice pipeline, persona, and response quality are tuned specifically for Turkish.
+FRIDAY Synapse is **fully bilingual** — Turkish and English are both supported out of the box.
 
-**English support is in active development** as part of the commercial release. The model stack (Whisper, GPT-4.1, Gemini) handles English natively — the remaining work is persona localization, TTS voice selection, and UI strings.
+- Voice pipeline (STT + TTS), persona, and system prompts are tuned for both languages
+- Set `FRIDAY_LANGUAGE=en` or `FRIDAY_LANGUAGE=tr` in your `.env` file
+- English TTS: `en-US-GuyNeural` / Turkish TTS: `tr-TR-AhmetNeural` (edge-tts Neural)
 
-Target languages at launch: **Turkish · English**
+**Supported languages: Turkish · English**
 
 ---
 
@@ -234,17 +236,18 @@ Target languages at launch: **Turkish · English**
 | Desktop tools (50+) | ✅ Complete |
 | Proactive engine | ✅ Complete |
 | Multi-model routing | ✅ Complete |
-| English language support | 🔄 In progress |
-| First-run setup wizard | 🔄 In progress |
-| Public release packaging | 📋 Planned |
+| English language support | ✅ Complete |
+| Telegram remote access | ✅ Complete |
+| First-run setup wizard | ✅ Complete |
+| Beta release packaging | ✅ Available |
 
 ---
 
 ## Availability
 
-FRIDAY Synapse is **not publicly released yet.**
+FRIDAY Synapse **beta is now available** for early users.
 
-An **early access version** is coming. Follow this repository to stay updated.
+Get access by reaching out directly — beta slots are limited.
 
 <div align="center">
 

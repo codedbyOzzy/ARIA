@@ -1,229 +1,79 @@
-# FRIDAY Synapse — System Architecture
+# FRIDAY Synapse Architecture v1.0
 
-A high-level overview of how the system is structured. Implementation details are intentionally omitted.
-
----
-
-## Philosophy
-
-FRIDAY Synapse is not built as a monolithic app with a chatbot embedded inside it. It's designed as a **cognitive operating layer** — a set of specialized modules running in parallel, each owning a specific domain of intelligence, communicating through a shared event bus.
-
-This architecture makes the system:
-- **Composable** — new capabilities are new stones, not patches to existing code
-- **Resilient** — one module failing doesn't cascade to others
-- **Observable** — every event is typed, named, and traceable
+> *"Intelligence is not a single point. It is the convergence of Soul, Mind, and Body."*
 
 ---
 
-## The BrainCore Event Bus
+## The Awareness Ecosystem Philosophy
+FRIDAY Synapse v1.0 moves beyond the "Stone" collection. It is now designed as an **Awareness Ecosystem**. The architecture is structured into four distinct cognitive layers that run in a continuous loop through a unified event bus.
 
-The central nervous system of FRIDAY Synapse.
-
-```
-BrainCore
-    │
-    ├── register_stone(stone)     ← adds a module to the system
-    ├── dispatch(event)           ← broadcasts a typed event to all stones
-    ├── initialize_all()          ← starts all stones in dependency order
-    └── shutdown_all()            ← graceful teardown on app exit
-```
-
-Every stone subscribes to the events it cares about. No stone directly calls another. All communication passes through the bus.
-
-Events are typed `StoneEvent` objects with:
-- `name` — the event type (e.g. `USER_SPOKE`, `SPEAK_TEXT`, `FILE_DROPPED`)
-- `source` — which stone or system originated it
-- `payload` — structured data dictionary
+This architecture ensures:
+- **Temporal Continuity** — Sessions are no longer isolated; they are arcs.
+- **Predictive Intent** — The system understands the next step before it's asked.
+- **Emotional Resonance** — Long-term user motivation and triggers are modeled.
 
 ---
 
-## Intelligence Stones
+## The Convergence Loop (Message Journey)
+The core of the system is the **BrainCore Event Bus**. Every interaction triggers a 4-layer awareness pipeline.
 
-### EchoStone
-**Domain:** Memory, behavior analysis, conversation continuity
+### Layer 1: Strategic Intelligence (ORACLE)
+**Goal:** Optimal model selection and task routing.
+- Analyzes query complexity (Trivial → Deep) and urgency.
+- Executes weighted oylama (voting) via specialized sub-stones.
+- Routes to the most efficient LLM (gpt-4, o4-mini, or local fallback).
 
-- Loads and manages the persistent memory store on startup
-- Intercepts `USER_SPOKE` events to extract and store new memories
-- Provides memory context retrieval for LogicStone before each LLM call
-- Detects rephrase loops — when the user re-asks the same thing differently
+### Layer 2: Predictive Synthesizer (SPECTRE)
+**Goal:** Proactive intent detection.
+- Synthesizes current conversation arcs to predict the next logical user step.
+- Prepares tool contexts or information bridges before the user asks for them.
+- Reduces cognitive friction by suggesting relevant memories or actions.
 
----
+### Layer 3: Historical Narrative (THE ARC & ARCHIVE)
+**Goal:** Longitudinal awareness and temporal wisdom.
+- **THE ARC:** Tracks "Episodes" and "Decisions" across weeks and months. Detects "Ghost Threads" (reappearing narrative loops).
+- **ARCHIVE:** Manages the Emotional Signature. Upgrades memories through a hierarchy: Short-Term → Medium-Term → Longitudinal.
 
-### VoiceStone
-**Domain:** Audio input/output pipeline
-
-- Manages continuous microphone listening via webrtcvad (VAD)
-- STT chain: Groq Whisper (primary) → faster-whisper (offline fallback)
-- Dispatches `USER_SPOKE` events when speech is transcribed
-- Handles TTS output via edge-tts Neural TTS + pygame streaming
-- Implements barge-in: stops current speech if new input detected
-- Echo suppression: ignores input while FRIDAY is speaking
-
-```
-Microphone → webrtcvad → speech buffer → Groq Whisper → USER_SPOKE event
-SPEAK_TEXT event → edge-tts → pygame streaming playback
-```
+### Layer 4: Sensory Action (VIGIL & TOOLS)
+**Goal:** Real-time state tracking and physical execution.
+- **VIGIL (Tide, Compass, Ember, Mirror):** Monitors if the user is active, tracks multi-turn goals, and detects assistant confidence.
+- **ACTION STONES:** Win32 API, PyAutoGUI, and native Windows tool integration.
 
 ---
 
-### VisionStone
-**Domain:** Visual context — screen capture and image analysis
-
-- Screenshot capture on demand
-- Screen region selection
-- Routes image data to Gemini Vision API for analysis
-- Triggered via `LOOK_AT_SCREEN` or `FILE_DROPPED` events
-
----
-
-### ActionStone
-**Domain:** OS-level execution
-
-- Win32 API calls: window minimize/maximize/close/focus
-- PyAutoGUI: mouse movement, clicks, keyboard input
-- PowerShell execution for system-level operations
-- File system: create, read, write, delete, search
-- Application launch via Start Menu discovery cache
-
----
-
-### WebStone
-**Domain:** Internet access and live data
-
-Three-tier search system:
-1. `search_web` — fast metadata + snippets (~280 chars per result)
-2. `read_webpage` — full content extraction from a specific URL
-3. `search_and_read` — search + reads the best result in full
-
-Also handles:
-- Weather (OpenWeatherMap)
-- News (Turkish and world)
-- Clipboard read/write
-
----
-
-### LogicStone
-**Domain:** Decision-making, LLM routing, tool orchestration
-
-The orchestrator of FRIDAY Synapse. Every `USER_SPOKE` event flows here.
+## BrainCore Event Bus
+The central nervous system of FRIDAY Synapse remains event-driven but now handles **context-enriched payloads**.
 
 ```
 USER_SPOKE
     │
-    ├── 1. Request memory context from EchoStone
-    ├── 2. Route to appropriate LLM:
-    │       ├── GPT-4.1-mini   (standard, tools enabled)
-    │       ├── o4-mini        (complex reasoning, no tools)
-    │       ├── Ollama local   (offline mode)
-    │       └── Gemini 2.5     (fallback)
-    ├── 3. Execute tool calls in parallel (ThreadPoolExecutor)
-    ├── 4. Synthesize final response
-    └── 5. Dispatch SPEAK_TEXT event
-```
-
-Tool results are processed in parallel — multi-tool responses have no sequential bottleneck.
-
----
-
-### MindStone
-**Domain:** Adaptive communication style
-
-Observes each interaction and builds a behavioral profile:
-- Response length preference (short vs. detailed)
-- Tone preference (formal vs. casual)
-- Technical depth expectation
-- Reaction to humor
-
-Injects a style directive into every LLM prompt, gradually shifting FRIDAY's communication toward the user's observed preferences.
-
----
-
-## ProactiveEngine
-
-Runs as a background daemon thread. Not part of the event bus — it *emits* events rather than consuming them.
-
-```
-On startup (after 6s delay):
-  → build_startup_brief() — time + reminders + system status
-  → dispatch SPEAK_TEXT
-
-Every 30s:
-  → Check idle time
-  → If idle > 25 min and no recent warning:
-      → Surface best unsurfaced memory/thought, or
-      → Dispatch presence notification
-
-Reminder callbacks:
-  → Registered at startup
-  → Fire SPEAK_TEXT at exact scheduled time
-```
-
----
-
-## Voice Threading Model
-
-```
-Main Thread          Audio Thread          Worker Thread
-     │                    │                     │
-  Qt UI loop          webrtcvad             LLM calls
-  Event dispatch      Speech buffer         Tool execution
-  QML rendering       STT pipeline          TTS generation
-                      Barge-in detection
-```
-
-Audio capture and speech processing run on a dedicated daemon thread. LLM inference and tool execution run on a separate worker. The main thread handles only UI rendering and event dispatching.
-
-TTS uses a **producer-consumer pipeline**:
-- Producer: sentence splitter streams text chunks as LLM generates
-- Consumer: pygame playback begins on first sentence
-- Result: first word of speech plays 1-2 seconds after generation begins, not after full response
-
----
-
-## Memory System
-
-```
-MemoryStore
+    ├── 1. Strategic Routing (ORACLE)
+    ├── 2. Intent Prediction (SPECTRE)
+    ├── 3. Narrative Retrieval (THE ARC)
+    ├── 4. Emotional Context (ARCHIVE)
+    ├── 5. Real-Time State (VIGIL)
     │
-    ├── Categories: PREFERENCE · FACT · EVENT · GOAL · CONTEXT
-    ├── Retrieval:  TF-IDF (primary) → OpenAI embeddings (if key available)
-    ├── Storage:    JSON file, auto-backup on each write
-    ├── Dedup:      cosine similarity threshold (configurable)
-    └── Decay:      importance scores decay over time, critical memories persist
+    └── FINAL CONVERGENCE → Hyper-Contextual System Prompt
 ```
-
-Memories are extracted automatically during conversation by the EchoStone's LLM-based extraction pipeline. No manual tagging required.
 
 ---
 
-## Routing Logic
+## Memory Hierarchy (v1.0 Upgrade)
+Memory is no longer a simple JSON store. It is now a **Temporal Hierarchy**:
 
-```
-Is it a simple conversational reply?
-  └── GPT-4.1-mini (streaming, tools enabled)
-
-Does it require deep reasoning, code analysis, or multi-step planning?
-  └── o4-mini (no streaming, thinking mode)
-
-Is offline mode active or API quota exceeded?
-  └── Ollama local (qwen2.5:7b or qwen2.5:3b for intent)
-
-Did OpenAI fail 3+ consecutive times?
-  └── Gemini 2.5 Flash (automatic, silent)
-```
-
-Circuit breaker prevents cascading failures to local model. Failure counters reset on successful calls.
+1.  **Short-Term (THE ARC):** Active episodes and immediate session context. (0-2 weeks)
+2.  **Medium-Term (ARCHIVE):** Summarized project progress and recurring topics. (2-8 weeks)
+3.  **Longitudinal (ARCHIVE):** Core user facts, emotional motivators, and project history. (2+ months)
+4.  **Emotional Signature:** Persistent tracking of user frustration triggers and engagement styles.
 
 ---
 
-## Key Design Decisions
+## Key Design Decisions in v1.0
+- **Zero-Dependency Awareness:** All core awareness modules (Oracle, Spectre, etc.) run using Python standard library for maximum stability.
+- **Parallel Context Extraction:** Narrative and state extraction (The Arc absorb / Archive upgrade) runs asynchronously after the response is sent.
+- **Adaptive Style Injection:** MindStone constantly tunes the LLM's frequency to the user's observed cognitive pace.
+- **Proactive Silence Surface:** The system uses the "Ember" state to surface unresolved thoughts during idle periods.
 
-**No direct stone-to-stone calls.** Everything through the event bus. This makes the system debuggable — every interaction is a named, logged event.
+---
 
-**Parallel tool execution.** Multiple tool calls from a single LLM response run concurrently via `ThreadPoolExecutor`. Latency scales with the slowest tool, not the sum.
-
-**Streaming TTS from sentence 1.** The response pipeline splits on sentence boundaries and begins audio playback before the LLM has finished generating. Perceived response time is dramatically lower than the actual generation time.
-
-**Memory is always on.** There's no "remember this" mode. Every conversation is observed by EchoStone. Important information is extracted and stored automatically.
-
-**Proactive by default.** FRIDAY Synapse doesn't wait to be addressed. It monitors, surfaces, and notifies — within boundaries the user can configure.
+*Last updated: May 12, 2026*

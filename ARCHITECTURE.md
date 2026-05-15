@@ -30,6 +30,10 @@ Simple safe requests can be handled locally. Tool use, current information, desk
 
 ## High-Level Runtime Flow
 
+<div align="center">
+<img src="images/synapse-architecture.svg" width="860" alt="FRIDAY Synapse architecture map"/>
+</div>
+
 ```text
 User text or voice
       |

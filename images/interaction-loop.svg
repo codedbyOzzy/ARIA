@@ -1,0 +1,87 @@
+<svg width="1100" height="520" viewBox="0 0 1100 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">FRIDAY Interaction Loop</title>
+  <desc id="desc">A step-by-step interaction loop from capture to context, routing, reasoning, action, learning, and response.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1100" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1018"/>
+      <stop offset="1" stop-color="#191306"/>
+    </linearGradient>
+    <linearGradient id="step" x1="70" y1="170" x2="1030" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5D987"/>
+      <stop offset="1" stop-color="#B6781D"/>
+    </linearGradient>
+    <style>
+      .title { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 38px; font-weight: 700; fill: #F8E6B0; letter-spacing: 0; }
+      .subtitle { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 16px; fill: #B8C0CC; }
+      .step-title { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 18px; font-weight: 700; fill: #11151D; }
+      .step-copy { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 12px; fill: #1A2230; }
+      .label { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 13px; fill: #C8D0DA; }
+    </style>
+  </defs>
+  <rect width="1100" height="520" rx="28" fill="url(#bg)"/>
+  <rect x="34" y="34" width="1032" height="452" rx="24" stroke="#4D3B16" stroke-width="1.2"/>
+
+  <text x="70" y="86" class="title">The FRIDAY Interaction Loop</text>
+  <text x="72" y="116" class="subtitle">A user turn becomes context, action, memory, and voice feedback.</text>
+
+  <g transform="translate(58 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Capture</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Text or voice</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">enters the UI</text>
+  </g>
+
+  <g transform="translate(193 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Context</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Memory and</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">state signals</text>
+  </g>
+
+  <g transform="translate(328 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Route</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Local, fast,</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">or deep model</text>
+  </g>
+
+  <g transform="translate(463 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Predict</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Likely next</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">step is added</text>
+  </g>
+
+  <g transform="translate(598 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Reason</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Brain streams</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">the answer</text>
+  </g>
+
+  <g transform="translate(733 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Act</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Tools touch</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">the desktop</text>
+  </g>
+
+  <g transform="translate(868 176)">
+    <rect x="0" y="0" width="118" height="112" rx="16" fill="url(#step)"/>
+    <text x="59" y="38" text-anchor="middle" class="step-title">Learn</text>
+    <text x="59" y="65" text-anchor="middle" class="step-copy">Memory and</text>
+    <text x="59" y="84" text-anchor="middle" class="step-copy">style update</text>
+  </g>
+
+  <g stroke="#D7A545" stroke-width="3" stroke-linecap="round">
+    <path d="M176 232 H193"/>
+    <path d="M311 232 H328"/>
+    <path d="M446 232 H463"/>
+    <path d="M581 232 H598"/>
+    <path d="M716 232 H733"/>
+    <path d="M851 232 H868"/>
+  </g>
+
+  <path d="M927 304 C927 385 173 385 117 304" stroke="#D7A545" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 10"/>
+  <text x="550" y="376" text-anchor="middle" class="label">The completed turn returns as UI output, spoken response, and new long-term context.</text>
+</svg>

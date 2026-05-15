@@ -2,6 +2,10 @@
 
 These scenarios describe what FRIDAY is designed to do in the private Windows runtime. They are written as product examples, not as exposed source-code instructions.
 
+<div align="center">
+<img src="images/interaction-loop.svg" width="860" alt="FRIDAY interaction loop"/>
+</div>
+
 ---
 
 ## Daily Desktop Flow

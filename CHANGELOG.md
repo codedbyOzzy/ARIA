@@ -8,6 +8,7 @@
 - Added privacy and public/private module documentation
 - Added showcase scenarios for desktop, memory, voice, and reasoning workflows
 - Updated roadmap language from "complete stable release" to "private beta showcase"
+- Added Turkish README and GitHub-renderable SVG architecture visuals
 
 ---
 

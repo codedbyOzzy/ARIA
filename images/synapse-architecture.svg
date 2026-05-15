@@ -1,0 +1,93 @@
+<svg width="1100" height="680" viewBox="0 0 1100 680" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">FRIDAY Synapse Architecture Map</title>
+  <desc id="desc">A layered architecture map showing interface, event, reasoning, memory, awareness, personality, and action layers.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1100" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B0F17"/>
+      <stop offset="0.48" stop-color="#10151F"/>
+      <stop offset="1" stop-color="#171308"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="116" y1="50" x2="980" y2="610" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE59A"/>
+      <stop offset="0.45" stop-color="#D9A441"/>
+      <stop offset="1" stop-color="#8A5C13"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <style>
+      .title { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 42px; font-weight: 700; fill: #F8E6B0; letter-spacing: 0; }
+      .subtitle { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 17px; fill: #B8C0CC; }
+      .layer-title { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 20px; font-weight: 700; fill: #FFF4D0; }
+      .layer-copy { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 14px; fill: #CDD3DD; }
+      .chip { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: #11151D; }
+      .core { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 24px; font-weight: 700; fill: #11151D; }
+      .small { font-family: Segoe UI, Inter, Arial, sans-serif; font-size: 12px; fill: #AEB7C5; }
+    </style>
+  </defs>
+  <rect width="1100" height="680" rx="28" fill="url(#bg)"/>
+  <rect x="34" y="34" width="1032" height="612" rx="24" stroke="#4D3B16" stroke-width="1.2"/>
+
+  <text x="70" y="86" class="title">FRIDAY Synapse</text>
+  <text x="72" y="116" class="subtitle">Private Windows-native AI assistant architecture</text>
+
+  <g filter="url(#softShadow)">
+    <circle cx="550" cy="345" r="104" fill="url(#gold)"/>
+    <circle cx="550" cy="345" r="78" fill="#F2C45C" opacity="0.95"/>
+    <circle cx="550" cy="345" r="46" fill="#151922"/>
+    <text x="550" y="337" text-anchor="middle" class="core">BrainCore</text>
+    <text x="550" y="365" text-anchor="middle" class="chip">Event Bus</text>
+  </g>
+
+  <g>
+    <rect x="70" y="165" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="94" y="200" class="layer-title">Interface Layer</text>
+    <text x="94" y="227" class="layer-copy">QML desktop shell, setup wizard, settings, chat UI</text>
+  </g>
+
+  <g>
+    <rect x="70" y="294" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="94" y="329" class="layer-title">Memory Layer</text>
+    <text x="94" y="356" class="layer-copy">MemoryStore, THE ARC, ARCHIVE, sessions</text>
+  </g>
+
+  <g>
+    <rect x="70" y="423" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="94" y="458" class="layer-title">Personality Layer</text>
+    <text x="94" y="485" class="layer-copy">MindStone, EchoStone, BondStone, IntuitionStone</text>
+  </g>
+
+  <g>
+    <rect x="738" y="165" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="762" y="200" class="layer-title">Reasoning Layer</text>
+    <text x="762" y="227" class="layer-copy">Brain, SafeBrainRouter, ORACLE, model fallback</text>
+  </g>
+
+  <g>
+    <rect x="738" y="294" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="762" y="329" class="layer-title">Awareness Layer</text>
+    <text x="762" y="356" class="layer-copy">SPECTRE, VIGIL, goals, state, predictions</text>
+  </g>
+
+  <g>
+    <rect x="738" y="423" width="292" height="94" rx="14" fill="#131A25" stroke="#334257"/>
+    <text x="762" y="458" class="layer-title">Action Layer</text>
+    <text x="762" y="485" class="layer-copy">Voice, desktop tools, web, files, Telegram, Steam</text>
+  </g>
+
+  <g stroke="#CFA64B" stroke-width="2" stroke-linecap="round" opacity="0.86">
+    <path d="M362 212 C430 212 454 260 486 295"/>
+    <path d="M362 341 C420 341 447 341 446 341"/>
+    <path d="M362 470 C430 470 454 430 486 395"/>
+    <path d="M738 212 C670 212 646 260 614 295"/>
+    <path d="M738 341 C680 341 653 341 654 341"/>
+    <path d="M738 470 C670 470 646 430 614 395"/>
+  </g>
+
+  <g>
+    <rect x="398" y="568" width="304" height="38" rx="19" fill="#E0AF4E"/>
+    <text x="550" y="592" text-anchor="middle" class="chip">Context first. Tools when needed. Memory after every turn.</text>
+  </g>
+
+  <text x="70" y="617" class="small">Public showcase diagram. Private runtime code, memory files, credentials, and automation internals are not included.</text>
+</svg>

@@ -8,6 +8,8 @@
 
 **Persistent memory. Voice interaction. Desktop control. Multi-model reasoning.**
 
+**English** | [Türkçe](README.tr.md)
+
 <br/>
 
 ![Status](https://img.shields.io/badge/Status-Private%20Beta-gold?style=for-the-badge)
@@ -41,7 +43,7 @@ The private FRIDAY runtime combines:
 <br/>
 
 <div align="center">
-<img src="images/core-yellow.png" width="760" alt="FRIDAY Synapse architecture visual"/>
+<img src="images/synapse-architecture.svg" width="840" alt="FRIDAY Synapse architecture map"/>
 </div>
 
 ---
@@ -81,6 +83,10 @@ FRIDAY is organized as a layered assistant OS rather than a single chat loop.
 ---
 
 ## The Interaction Loop
+
+<div align="center">
+<img src="images/interaction-loop.svg" width="840" alt="FRIDAY interaction loop"/>
+</div>
 
 Every user turn moves through a context-rich loop:
 

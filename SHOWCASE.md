@@ -1,69 +1,33 @@
-# FRIDAY Showcase Scenarios
+# ARIA Showcase Scenarios
 
-These scenarios describe what FRIDAY is designed to do in the private Windows runtime. They are written as product examples, not as exposed source-code instructions.
+ARIA is designed to integrate flawlessly into your daily workflows. Rather than providing a list of technical commands, here are real-world scenarios demonstrating how the system operates.
 
-<div align="center">
-<img src="images/interaction-loop.svg" width="860" alt="FRIDAY interaction loop"/>
-</div>
+## Scenario 1: The Contextual Debugger (Bar Mode)
 
----
+You are writing code in VS Code. You encounter a cryptic error message in your terminal.
 
-## Daily Desktop Flow
+1. You highlight the error trace and copy it (`Ctrl+C`).
+2. You hit `Alt+Space`. ARIA instantly appears in Bar Mode.
+3. Because ARIA monitors the clipboard context, it immediately displays action chips beneath the search bar: `[ 🐛 Debug ]` `[ 📝 Explain ]`.
+4. You click `Debug`.
+5. ARIA streams a targeted solution in under a second without you ever having to type a prompt or switch to a browser window.
 
-User:
+## Scenario 2: The Morning Briefing (Ambient -> Panel Mode)
 
-```text
-Open Spotify, play something calm, and set the volume to 20 percent.
-```
+It is 08:00 AM. ARIA has been running silently in Ambient Mode.
 
-FRIDAY can route the request to desktop tools, open the relevant app or service, adjust media behavior, and confirm only after the action path has run.
+1. You sit down at your PC and hit `Tab` to expand ARIA into Panel Mode.
+2. ARIA has already analyzed your schedule for the day, retrieved the outcomes of tasks from yesterday, and compiled a daily briefing.
+3. As the UI renders the briefing, ARIA's TTS engine speaks naturally: *"Good morning. You have a team sync at 10 AM, and I noticed we didn't finish the deployment script yesterday. Would you like me to open that file for you?"*
+4. You reply, "Yes, open it."
+5. ARIA launches VS Code directly to the exact file.
 
----
+## Scenario 3: Frictionless Desktop Automation (Bar Mode)
 
-## File-Aware Reasoning
+You are deeply focused on reading an article, but the music is too loud and you need to jot down a quick thought.
 
-User drops a document into the UI and asks:
-
-```text
-Summarize the parts that matter for the launch plan.
-```
-
-FRIDAY extracts relevant text chunks, avoids sending unnecessary content, and answers with context from the file plus the user's project memory.
-
----
-
-## Proactive Memory
-
-User:
-
-```text
-What were we trying to fix last time in the FRIDAY voice pipeline?
-```
-
-FRIDAY can consult recent session history, long-term memory, and narrative tracking to reconstruct the thread instead of treating the question as stateless.
-
----
-
-## Debugging and Deep Reasoning
-
-User:
-
-```text
-This error keeps happening when the voice loop starts. Analyze the likely cause.
-```
-
-FRIDAY can route the request to a deeper reasoning model, use project context, inspect relevant logs when available, and return an actionable diagnosis.
-
----
-
-## User-State Adaptation
-
-If the user is moving quickly, correcting often, or asking short command-like messages, FRIDAY can reduce verbosity and prioritize action.
-
-If the user is exploring a complex design decision, FRIDAY can shift into a more reflective planning mode.
-
----
-
-## Boundaries
-
-The public showcase does not expose the private runtime's prompts, automation code, personal memory, or credentials. These scenarios explain the product behavior at a safe level.
+1. You hit `Alt+Space` and type: *"mute spotify and note down that we need to switch the primary database to postgres."*
+2. You hit Enter.
+3. ARIA executes the system volume command instantly, muting Spotify.
+4. Simultaneously, it routes the text into your persistent Memory Engine, categorizing it as an actionable technical note.
+5. You hit `Esc`, ARIA disappears, and you continue reading your article without ever leaving the page.

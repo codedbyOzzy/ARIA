@@ -1,55 +1,19 @@
-# Privacy and Security Boundary
+# Privacy by Design
 
-FRIDAY is designed as a personal desktop assistant. That means it may interact with sensitive local context in the private runtime: user preferences, session history, local files, app state, reminders, and automation commands.
+ARIA is engineered with a strict local-first philosophy. A personal operating system must remain strictly personal. 
 
-This showcase repository intentionally does not contain that private runtime data.
+## 1. Zero Cloud Telemetry
+ARIA does not ping a central server. There is no telemetry, no analytics, no user tracking, and no centralized database. The software lives exclusively on your machine. 
 
----
+## 2. Local Memory Architecture
+When ARIA learns about you—your preferences, your schedule, your past conversations—that data is stored entirely in local SQLite databases and local vector stores on your hard drive. 
 
-## What Is Never Published Here
+No third-party service has access to your long-term memory or episodic narrative. 
 
-- API keys or provider credentials
-- `.env` files
-- Local memory files
-- Session logs
-- Personal assistant conversations
-- Desktop automation secrets
-- Private prompts containing personal data
-- User-specific behavior profiles
-- Runtime cache files
+## 3. Bring Your Own Key (BYOK)
+You are in complete control of the cognitive engine. By utilizing a BYOK model, ARIA acts only as the interface between you and the provider of your choice.
 
----
+- **Cloud Providers:** If you connect OpenAI, Anthropic, or Gemini, your prompts are sent directly to their APIs. 
+- **Absolute Privacy (Local Models):** For users who require absolute air-gapped privacy, ARIA fully supports running local models via Ollama. When running locally, not a single byte of text leaves your machine.
 
-## Local-First Philosophy
-
-FRIDAY is designed to feel present on the user's own machine. The assistant stores and retrieves personal context locally in the private runtime.
-
-The public repository only explains the product and architecture. It is not a hosted assistant backend and does not collect user data.
-
----
-
-## Why Some Code Stays Private
-
-The private runtime includes desktop automation and personal memory behavior. Publishing that code directly could expose:
-
-- Unsafe automation surfaces
-- Personal workflow assumptions
-- Internal prompt and routing policies
-- Private runtime configuration
-- Sensitive data-handling paths
-
-The public showcase keeps the architecture understandable while keeping the actual user environment protected.
-
----
-
-## Public Module Boundary
-
-Some cognition concepts may be published as standalone libraries when they are safe, reusable, and do not expose private runtime behavior.
-
-See [PUBLIC_MODULES.md](PUBLIC_MODULES.md).
-
----
-
-## Responsible Disclosure
-
-If you notice a security or privacy concern in a public FRIDAY-related repository, please open a GitHub issue with a clear description. Do not include secrets or private user data in the issue body.
+Your API keys are stored locally as environment variables and are never transmitted anywhere except directly to the provider.

@@ -1,152 +1,234 @@
 <div align="center">
 
-<img src="images/core-gold.png" width="170" alt="FRIDAY Synapse core"/>
+<img src="images/aria-bar.png" width="680" alt="ARIA Bar Mode Interface"/>
 
-# FRIDAY Synapse
+<br/>
+<br/>
 
-### A private Windows-native AI assistant architecture showcase
+# ARIA
 
-**Persistent memory. Voice interaction. Desktop control. Multi-model reasoning.**
+### Personal AI Operating System for Windows
 
-**English** | [Türkçe](README.tr.md)
+**The era of the assistant is over.**
 
 <br/>
 
-![Status](https://img.shields.io/badge/Status-Private%20Beta-gold?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active%20Development-6366f1?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)
-![Focus](https://img.shields.io/badge/Focus-AI%20Desktop%20OS-8A2BE2?style=for-the-badge)
+![Architecture](https://img.shields.io/badge/Architecture-Core%20v2.0-6366f1?style=for-the-badge)
 ![Source](https://img.shields.io/badge/Source-Showcase%20Only-222222?style=for-the-badge)
 
 <br/>
 
-*"Not a chatbot tab. Not a prompt wrapper. FRIDAY is designed as a persistent assistant that lives with the operating system."*
+*"Alt + Space. Whisper your intent. Let the orchestra handle the rest."*
 
 </div>
 
 ---
 
-## What This Repository Is
+## What is ARIA?
 
-**ProjectFridaySynapse** is the public showcase for FRIDAY, a private Windows-native AI desktop assistant built by [Ozzy](https://github.com/codedbyOzzy).
+ARIA is not a chatbot. Not a search wrapper. Not a Siri clone.
 
-This repository explains the product vision, cognitive architecture, public modules, privacy boundaries, and roadmap behind FRIDAY without exposing private runtime code, credentials, personal memory files, or sensitive automation logic.
+It is the **intelligence layer between you and your computer** — a Personal AI Operating System that lives on your desktop, understands your context, controls your machine, runs tasks in the background, and knows you better than any cloud service ever could.
 
-The private FRIDAY runtime combines:
+ARIA evolved from [FRIDAY Synapse](https://github.com/codedbyOzzy/ProjectFridaySynapse), a 7-stone cognitive architecture that proved the concept but revealed a critical limitation: intelligence is useless when it's slow.
 
-- A PySide6/QML desktop interface
-- Continuous voice input and neural text-to-speech
-- Multi-model reasoning with OpenAI, Gemini, Groq, and local LLM fallback
-- Persistent memory, session history, narrative tracking, and user adaptation
-- Windows desktop tools for apps, files, clipboard, browser, Steam, Telegram, system stats, and reminders
-- A modular event-driven architecture built around FRIDAY "Stones"
+**ARIA is the answer.**
+
+---
+
+## The Evolution: FRIDAY → ARIA
+
+FRIDAY's event-bus architecture was a cognitive laboratory. Seven stones, each brilliant in isolation, chained together in a sequential pipeline that punished every query with 10–30 seconds of latency.
+
+ARIA shatters that chain.
+
+| | FRIDAY Synapse (v1.x) | ARIA Core (v2.0) |
+|---|---|---|
+| **Architecture** | 8 Stones + Event Bus | 3 Services + Direct Async |
+| **First Response** | 10s – 30s | **< 1.2s** |
+| **Fast Queries** (time, date) | 2–4s | **< 80ms** |
+| **Tool Calls** | 8–15s | **< 3s** |
+| **UI Feedback** | Full response waited | **Token-by-token streaming** |
+| **TTS** | After full response | **Sentence-by-sentence** |
+| **LLM Providers** | OpenAI only | OpenAI, Anthropic, Gemini, Groq, Ollama |
+
+---
+
+## Core Architecture v2.0
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         ARIA CORE                           │
+│                                                             │
+│  ┌──────────────┐  ┌─────────────────┐  ┌───────────────┐  │
+│  │ InputEngine  │  │   AgentCore     │  │  OutputBus    │  │
+│  │              │  │                 │  │               │  │
+│  │ • Alt+Space  │→ │ • LLMClient     │→ │ • Stream UI   │  │
+│  │ • STT opt.   │  │ • Tool executor │  │ • TTS pipe    │  │
+│  │ • Intent cls │  │ • Context inject│  │ • Notif       │  │
+│  │ • Fast path  │  │ • Stream split  │  │ • File out    │  │
+│  └──────────────┘  └─────────────────┘  └───────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  MemoryEngine (runs in parallel)                     │   │
+│  │  • Personal Knowledge Base (SQLite + vector)         │   │
+│  │  • Session context + auto-extraction                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  BackgroundScheduler                                  │   │
+│  │  • Task queue (SQLite) • Cron trigger                │   │
+│  │  • Windows Toast notifications                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The key engineering insight: `MemoryEngine` and `AgentCore` now start **in parallel** the moment input is received. By the time the LLM needs context, it's already there.
+
+```python
+async def handle_input(text: str):
+    memory_task = asyncio.create_task(memory.get_context(text))  # starts immediately
+    intent = classify_intent(text)                                 # instant, local
+    if intent.is_fast_path:
+        return fast_answer(intent)                                 # < 80ms
+    context = await memory_task                                    # already done
+    async for token in agent.stream(text, context):               # first token < 1.2s
+        ui.append_token(token)
+```
+
+---
+
+## The Interface
+
+<div align="center">
+
+<img src="images/aria-panel.png" width="400" alt="ARIA Panel Mode Interface"/>
+
+</div>
 
 <br/>
 
-<div align="center">
-<img src="images/synapse-architecture.svg" width="840" alt="FRIDAY Synapse architecture map"/>
-</div>
+ARIA operates across three seamless layers. **Omnipresent. Never Intrusive.**
 
----
-
-## What This Repository Is Not
-
-This is **not** the private FRIDAY source-code repository.
-
-It does not include:
-
-- Private assistant runtime code
-- API keys, prompts containing personal data, or user memory files
-- Desktop automation internals that could expose unsafe control surfaces
-- Personal logs, session history, or local configuration
-- Any production secrets or private model-routing policies
-
-FRIDAY is a local-first personal assistant. The public showcase is intentionally separated from the private runtime.
-
-See [PRIVACY.md](PRIVACY.md) and [PUBLIC_MODULES.md](PUBLIC_MODULES.md) for the boundary.
-
----
-
-## System Overview
-
-FRIDAY is organized as a layered assistant OS rather than a single chat loop.
-
-| Layer | Purpose | Example Modules |
+| Mode | Trigger | Purpose |
 |---|---|---|
-| Interface Layer | Desktop UI, setup flow, settings, chat surface | PySide6, QML, Setup Wizard |
-| Event Layer | Routes events between system components | BrainCore, StoneEvent |
-| Reasoning Layer | Chooses models, streams answers, calls tools | Brain, SafeBrainRouter, ORACLE |
-| Memory Layer | Remembers facts, goals, episodes, and decisions | MemoryStore, THE ARC, ARCHIVE |
-| Awareness Layer | Predicts next steps and tracks state | SPECTRE, VIGIL |
-| Personality Layer | Adapts tone, style, and user-world model | MindStone, EchoStone, BondStone, IntuitionStone |
-| Action Layer | Performs real desktop and web tasks | Tools, VoiceStone, ActionStone, WebStone |
+| **Ambient** | Always active | System tray presence. Monitors context. Runs background tasks. |
+| **Bar Mode** | `Alt + Space` | Instant query surface. Opens in < 100ms. Closes on `Esc`. |
+| **Panel Mode** | `Tab` from Bar | Expanded view. Brief tab, Tasks tab, Chat history. |
+
+### Bar Mode Design
+
+```
+Alt+Space →
+
+┌────────────────────────────────────────────────────────────┐
+│                                                            │
+│  ◈  Ask anything...                          ⌘K      ⟳   │  ← 72px
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+              600px, centered, glass background
+
+Response expands below with spring animation:
+┌────────────────────────────────────────────────────────────┐
+│  ◈  what should I prepare for tomorrow's meeting           │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  You have a strategy meeting at 14:00 with ABC.            │
+│  Based on your last 2 conversations about this...  [→ Full]│
+└────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## The Interaction Loop
+## Context-Aware Intelligence
 
-<div align="center">
-<img src="images/interaction-loop.svg" width="840" alt="FRIDAY interaction loop"/>
-</div>
+ARIA monitors your clipboard silently. When you open Bar Mode, it already knows what you're working on.
 
-Every user turn moves through a context-rich loop:
+| Clipboard Content | Suggested Actions |
+|---|---|
+| 🔗 **URL** | `Summarize` · `Research` · `Share` |
+| 💻 **Code** | `Debug` · `Explain` · `Improve` |
+| 📝 **Text** | `Rewrite` · `Translate` · `Analyze` |
+| 📅 **Meeting soon** | `Prepare briefing` |
+| ☀️ **Morning (7–9am)** | `Daily brief` |
 
-| Step | Module | What Happens |
+---
+
+## Bring Your Own Key (BYOK)
+
+ARIA has no subscription. No data sent to our servers. You connect your own AI providers directly.
+
+```python
+PROVIDERS = {
+    "openai":    OpenAIAdapter,    # GPT-4o, GPT-4o-mini, GPT-4.1
+    "anthropic": AnthropicAdapter, # Claude Opus 4, Sonnet 4.5
+    "google":    GeminiAdapter,    # Gemini 2.5 Pro/Flash
+    "groq":      GroqAdapter,      # Llama 3.3 70B — ultra-fast
+    "ollama":    OllamaAdapter,    # Local model — full privacy
+}
+```
+
+Configure once: choose your primary model, a complex-task model, and a fallback. ARIA routes intelligently based on query complexity.
+
+---
+
+## The 7 Stones — Harmonized
+
+FRIDAY's 7-stone cognitive architecture is not discarded. It is **unified**. Each stone's intelligence is absorbed into ARIA's three-service core:
+
+| Stone | Original Role | ARIA Integration |
 |---|---|---|
-| 1. Capture | VoiceStone / UI Bridge | Receives text or speech and emits a user event |
-| 2. Context | EchoStone / Memory | Retrieves relevant memories and comprehension signals |
-| 3. Route | SafeBrainRouter / ORACLE | Selects local, fast cloud, or deeper reasoning path |
-| 4. Predict | SPECTRE / VIGIL | Adds likely next-step and current-state context |
-| 5. Reason | Brain | Streams a response and calls tools when needed |
-| 6. Act | Tools | Opens apps, reads files, searches web, controls Windows |
-| 7. Learn | Memory / Stones | Stores useful facts, style signals, goals, and outcomes |
-| 8. Speak | TTS / UI | Displays and speaks the final response |
+| **THE ARC** | Narrative memory & episodic tracking | → MemoryEngine persistent KB |
+| **SPECTRE** | Predictive awareness & state tracking | → AgentCore context injection |
+| **ORACLE** | Model routing decisions | → LLMClient inline classification |
+| **EchoStone** | Retrieval & comprehension signals | → MemoryEngine parallel search |
+| **MindStone** | Personality & tone adaptation | → AgentCore system prompt |
+| **VoiceStone** | Speech I/O | → InputEngine STT + OutputBus TTS |
+| **ActionStone** | Desktop tool execution | → AgentCore tool executor |
 
 ---
 
 ## Capabilities
 
-### Native Desktop Assistance
+### Desktop Control
+- Open, close, and manage Windows applications
+- File system operations, clipboard management, system stats
+- Browser workflows, reminders, media control
 
-- Open and close Windows applications
-- Manage windows, clipboard, files, folders, and system stats
-- Control volume, media playback, reminders, and notes
-- Launch browser workflows, YouTube, Steam, and Telegram actions
-- Read selected files and summarize relevant content
-
-### Voice-First Interaction
-
-- Local voice loop with speech-to-text
-- Neural text-to-speech via Edge voices
-- Echo suppression and barge-in safeguards
-- Turkish and English support
-
-### Memory and Adaptation
-
-- Persistent user memory across sessions
-- Category-based facts, goals, preferences, events, and context
-- Episodic narrative tracking through THE ARC
-- Longitudinal emotional/profile memory through ARCHIVE
-- Communication-style adaptation through MindStone and EchoStone
+### Memory & Adaptation
+- Persistent personal knowledge base across all sessions
+- Narrative tracking: remembers conversations from 3 months ago
+- Automatic preference and context extraction
+- Morning briefing generation
 
 ### Multi-Model Intelligence
+- Fast path: instant answers for simple queries (< 80ms)
+- Deep path: complex reasoning with full context
+- Local path: full privacy with Ollama
+- Automatic failover between providers
 
-- Fast daily reasoning path
-- Deep reasoning path for analysis, debugging, and planning
-- Local model path for simple safe queries
-- Gemini and Groq fallbacks for resilience
-- Circuit-breaker style provider handling
+### Voice-First (Optional)
+- Speech-to-text via Groq Whisper
+- Sentence-by-sentence neural TTS — voice starts before response completes
+- Turkish and English support
 
 ---
 
-## Public Ecosystem
+## What This Repository Is
 
-Some FRIDAY concepts are public as standalone libraries or architecture references:
+**ARIA** is the public architecture showcase for a private Windows AI OS built by [Synapse Labs](https://github.com/codedbyOzzy).
 
-- [Intelligence Stones](https://github.com/codedbyOzzy/Intelligence-Stones) - adaptive persona and cognition modules
-- [THESingularity](https://github.com/codedbyOzzy/THESingularity) - public awareness-layer work
-- [FRIDAY Showcase](https://showcasefridayv2.netlify.app) - visual product showcase
+This repository documents:
+- Product vision and design philosophy
+- Core v2.0 architecture and engineering decisions
+- The FRIDAY → ARIA evolution story
+- Public module references and roadmap
 
-The full Windows assistant runtime remains private.
+It does **not** include private runtime code, API keys, personal memory files, automation internals, or production secrets.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) · [ROADMAP.md](ROADMAP.md) · [PRIVACY.md](PRIVACY.md)
 
 ---
 
@@ -154,25 +236,19 @@ The full Windows assistant runtime remains private.
 
 | File | Purpose |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | High-level technical architecture |
-| [ROADMAP.md](ROADMAP.md) | Current direction and planned work |
-| [SHOWCASE.md](SHOWCASE.md) | Example scenarios and user-facing demos |
-| [PUBLIC_MODULES.md](PUBLIC_MODULES.md) | Public vs private module boundary |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Core v2.0 technical deep-dive |
+| [ROADMAP.md](ROADMAP.md) | Sprint plan and feature timeline |
+| [SHOWCASE.md](SHOWCASE.md) | Real-world usage scenarios |
+| [PUBLIC_MODULES.md](PUBLIC_MODULES.md) | Public vs private boundary |
 | [PRIVACY.md](PRIVACY.md) | Privacy, data, and security posture |
-| [CHANGELOG.md](CHANGELOG.md) | Public showcase update history |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
 
 ---
-
-## Current Status
-
-FRIDAY is currently a **private beta desktop assistant**. The architecture is actively evolving, and this repository is maintained as the public-facing product and architecture showcase.
-
-The goal is simple: make powerful personal AI feel local, persistent, useful, and human enough to belong on the desktop.
 
 <div align="center">
 
 <br/>
 
-**Built by [Ozzy](https://github.com/codedbyOzzy)**
+**Built for the future by Synapse Labs. 2026.**
 
 </div>

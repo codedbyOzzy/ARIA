@@ -56,47 +56,13 @@ ARIA shatters that chain.
 
 ---
 
-## Core Architecture v2.0
+## The Core Concept: Parallel Harmony
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         ARIA CORE                           │
-│                                                             │
-│  ┌──────────────┐  ┌─────────────────┐  ┌───────────────┐  │
-│  │ InputEngine  │  │   AgentCore     │  │  OutputBus    │  │
-│  │              │  │                 │  │               │  │
-│  │ • Alt+Space  │→ │ • LLMClient     │→ │ • Stream UI   │  │
-│  │ • STT opt.   │  │ • Tool executor │  │ • TTS pipe    │  │
-│  │ • Intent cls │  │ • Context inject│  │ • Notif       │  │
-│  │ • Fast path  │  │ • Stream split  │  │ • File out    │  │
-│  └──────────────┘  └─────────────────┘  └───────────────┘  │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  MemoryEngine (runs in parallel)                     │   │
-│  │  • Personal Knowledge Base (SQLite + vector)         │   │
-│  │  • Session context + auto-extraction                 │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  BackgroundScheduler                                  │   │
-│  │  • Task queue (SQLite) • Cron trigger                │   │
-│  │  • Windows Toast notifications                        │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
+The key engineering insight behind ARIA is **Parallel Execution**. 
 
-The key engineering insight: `MemoryEngine` and `AgentCore` now start **in parallel** the moment input is received. By the time the LLM needs context, it's already there.
+Instead of waiting for one process to finish before starting another, ARIA's internal engines—Input, Memory, and Action—all start simultaneously the moment you begin speaking or typing. 
 
-```python
-async def handle_input(text: str):
-    memory_task = asyncio.create_task(memory.get_context(text))  # starts immediately
-    intent = classify_intent(text)                                 # instant, local
-    if intent.is_fast_path:
-        return fast_answer(intent)                                 # < 80ms
-    context = await memory_task                                    # already done
-    async for token in agent.stream(text, context):               # first token < 1.2s
-        ui.append_token(token)
-```
+By the time the AI needs your personal context or background information, it's already there. The result is a frictionless, instant experience where the system feels less like software and more like an extension of your own mind.
 
 ---
 
@@ -160,15 +126,7 @@ ARIA monitors your clipboard silently. When you open Bar Mode, it already knows 
 
 ARIA has no subscription. No data sent to our servers. You connect your own AI providers directly.
 
-```python
-PROVIDERS = {
-    "openai":    OpenAIAdapter,    # GPT-4o, GPT-4o-mini, GPT-4.1
-    "anthropic": AnthropicAdapter, # Claude Opus 4, Sonnet 4.5
-    "google":    GeminiAdapter,    # Gemini 2.5 Pro/Flash
-    "groq":      GroqAdapter,      # Llama 3.3 70B — ultra-fast
-    "ollama":    OllamaAdapter,    # Local model — full privacy
-}
-```
+You can configure ARIA to use **OpenAI**, **Anthropic**, **Google Gemini**, **Groq**, or even run entirely offline with local models via **Ollama**.
 
 Configure once: choose your primary model, a complex-task model, and a fallback. ARIA routes intelligently based on query complexity.
 

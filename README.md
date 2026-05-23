@@ -1,205 +1,84 @@
 <div align="center">
 
-<img src="images/aria-bar.png" width="680" alt="ARIA Bar Mode Interface"/>
-
-<br/>
 <br/>
 
 # ARIA
 
-### Personal AI Operating System for Windows
+### Your Computer's New Brain.
 
-**The era of the assistant is over.**
+**Not trapped in a browser. No internet required. A fully private, autonomous AI Operating System running natively on your hardware.**
 
 <br/>
 
 ![Status](https://img.shields.io/badge/Status-Active%20Development-6366f1?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)
-![Architecture](https://img.shields.io/badge/Architecture-Core%20v2.0-6366f1?style=for-the-badge)
+![Architecture](https://img.shields.io/badge/Architecture-Swarm%20Intelligence-6366f1?style=for-the-badge)
 ![Source](https://img.shields.io/badge/Source-Showcase%20Only-222222?style=for-the-badge)
 
 <br/>
 
-*"Alt + Space. Whisper your intent. Let the orchestra handle the rest."*
+*"The Future is Local."*
 
 </div>
+
+---
+
+## The Manifesto
+
+Big tech holds your data hostage in the cloud. Operating systems limit your potential. We built ARIA as a rebellion. It's the moment your computer awakens with its own intelligence.
+
+**Your Computer. Your Brain. Your Data.**
 
 ---
 
 ## What is ARIA?
 
-ARIA is not a chatbot. Not a search wrapper. Not a Siri clone.
+ARIA is a personal, fully autonomous AI Operating System. It is the intelligence layer between you and your computer. It understands your context, sees what you see, and acts on your behalf—all while keeping your data strictly local.
 
-It is the **intelligence layer between you and your computer** — a Personal AI Operating System that lives on your desktop, understands your context, controls your machine, runs tasks in the background, and knows you better than any cloud service ever could.
-
-ARIA evolved from [FRIDAY Synapse](https://github.com/codedbyOzzy/ProjectFridaySynapse), a 7-stone cognitive architecture that proved the concept but revealed a critical limitation: intelligence is useless when it's slow.
-
-**ARIA is the answer.**
+Powered by **Ollama** and local GPUs, billion-parameter models run at **Zero Cost** and with **Absolute Privacy**. For tasks requiring heavy lifting, ARIA can securely route queries to external providers (OpenAI, Anthropic, Gemini, Groq) using your own API keys.
 
 ---
 
-## The Evolution: FRIDAY → ARIA
+## Core Features & Capabilities
 
-FRIDAY's event-bus architecture was a cognitive laboratory. Seven stones, each brilliant in isolation, chained together in a sequential pipeline that punished every query with 10–30 seconds of latency.
+### 🎛 The Control Center
+A unified dashboard that gives you absolute oversight of your local AI. Monitor active tools, track running tasks, manage model providers, and view session analytics in real-time.
 
-ARIA shatters that chain.
+### ✨ Smart FAB (Floating Action Bar)
+Magic at your fingertips. Wherever you are in Windows (Chrome, VSCode, Word), simply selecting text summons a context-aware floating assistant right next to your cursor. No need to open apps. Just select, copy, and witness the magic.
 
-| | FRIDAY Synapse (v1.x) | ARIA Core (v2.0) |
-|---|---|---|
-| **Architecture** | 8 Stones + Event Bus | 3 Services + Direct Async |
-| **First Response** | 10s – 30s | **< 1.2s** |
-| **Fast Queries** (time, date) | 2–4s | **< 80ms** |
-| **Tool Calls** | 8–15s | **< 3s** |
-| **UI Feedback** | Full response waited | **Token-by-token streaming** |
-| **TTS** | After full response | **Sentence-by-sentence** |
-| **LLM Providers** | OpenAI only | OpenAI, Anthropic, Gemini, Groq, Ollama |
+### 🌙 Night Shift
+Hand ARIA a massive task before bed, and wake up to a perfectly orchestrated report. Night Shift runs autonomously for hours in a safe mode (read-only + web search), digesting data and compiling research while you sleep.
 
----
+### 🛡 Autonomous. Yet Safe.
+ARIA isn't just one assistant; it's a **Swarm of Agents**. Researchers and Coders collaborate to solve complex tasks. But security is paramount: The **Human-in-the-Loop** protocol ensures no file is deleted and no system command is executed without your explicit UI approval.
 
-## The Core Concept: Parallel Harmony
+### 🔌 Deep App Integrations
+ARIA doesn't just talk to you. It talks to your apps. Connect your favorite services (Discord, Spotify, YouTube Music) and let ARIA control them locally. Plugins are lazy-loaded only when used, ensuring absolute zero bloat on your system memory.
 
-The key engineering insight behind ARIA is **Parallel Execution**. 
-
-Instead of waiting for one process to finish before starting another, ARIA's internal engines—Input, Memory, and Action—all start simultaneously the moment you begin speaking or typing. 
-
-By the time the AI needs your personal context or background information, it's already there. The result is a frictionless, instant experience where the system feels less like software and more like an extension of your own mind.
+### 👁 Screen Vision & Cross-App Overlay
+ARIA can "see" what is on your screen. It processes UI elements and visual data contextually without taking screenshots to the cloud. Whether you're in a browser, a code editor, or a game, ARIA overlays seamlessly.
 
 ---
 
-## The Interface
+## The Architecture: Agentic Workflow
 
-<div align="center">
-
-<img src="images/aria-panel.png" width="400" alt="ARIA Panel Mode Interface"/>
-
-</div>
-
-<br/>
-
-ARIA operates across three seamless layers. **Omnipresent. Never Intrusive.**
-
-| Mode | Trigger | Purpose |
-|---|---|---|
-| **Ambient** | Always active | System tray presence. Monitors context. Runs background tasks. |
-| **Bar Mode** | `Alt + Space` | Instant query surface. Opens in < 100ms. Closes on `Esc`. |
-| **Panel Mode** | `Tab` from Bar | Expanded view. Brief tab, Tasks tab, Chat history. |
-
-### Bar Mode Design
-
-```
-Alt+Space →
-
-┌────────────────────────────────────────────────────────────┐
-│                                                            │
-│  ◈  Ask anything...                          ⌘K      ⟳   │  ← 72px
-│                                                            │
-└────────────────────────────────────────────────────────────┘
-              600px, centered, glass background
-
-Response expands below with spring animation:
-┌────────────────────────────────────────────────────────────┐
-│  ◈  what should I prepare for tomorrow's meeting           │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  You have a strategy meeting at 14:00 with ABC.            │
-│  Based on your last 2 conversations about this...  [→ Full]│
-└────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Context-Aware Intelligence
-
-ARIA monitors your clipboard silently. When you open Bar Mode, it already knows what you're working on.
-
-| Clipboard Content | Suggested Actions |
-|---|---|
-| 🔗 **URL** | `Summarize` · `Research` · `Share` |
-| 💻 **Code** | `Debug` · `Explain` · `Improve` |
-| 📝 **Text** | `Rewrite` · `Translate` · `Analyze` |
-| 📅 **Meeting soon** | `Prepare briefing` |
-| ☀️ **Morning (7–9am)** | `Daily brief` |
-
----
-
-## Bring Your Own Key (BYOK)
-
-ARIA has no subscription. No data sent to our servers. You connect your own AI providers directly.
-
-You can configure ARIA to use **OpenAI**, **Anthropic**, **Google Gemini**, **Groq**, or even run entirely offline with local models via **Ollama**.
-
-Configure once: choose your primary model, a complex-task model, and a fallback. ARIA routes intelligently based on query complexity.
-
----
-
-## The 7 Stones — Harmonized
-
-FRIDAY's 7-stone cognitive architecture is not discarded. It is **unified**. Each stone's intelligence is absorbed into ARIA's three-service core:
-
-| Stone | Original Role | ARIA Integration |
-|---|---|---|
-| **THE ARC** | Narrative memory & episodic tracking | → MemoryEngine persistent KB |
-| **SPECTRE** | Predictive awareness & state tracking | → AgentCore context injection |
-| **ORACLE** | Model routing decisions | → LLMClient inline classification |
-| **EchoStone** | Retrieval & comprehension signals | → MemoryEngine parallel search |
-| **MindStone** | Personality & tone adaptation | → AgentCore system prompt |
-| **VoiceStone** | Speech I/O | → InputEngine STT + OutputBus TTS |
-| **ActionStone** | Desktop tool execution | → AgentCore tool executor |
-
----
-
-## Capabilities
-
-### Desktop Control
-- Open, close, and manage Windows applications
-- File system operations, clipboard management, system stats
-- Browser workflows, reminders, media control
-
-### Memory & Adaptation
-- Persistent personal knowledge base across all sessions
-- Narrative tracking: remembers conversations from 3 months ago
-- Automatic preference and context extraction
-- Morning briefing generation
-
-### Multi-Model Intelligence
-- Fast path: instant answers for simple queries (< 80ms)
-- Deep path: complex reasoning with full context
-- Local path: full privacy with Ollama
-- Automatic failover between providers
-
-### Voice-First (Optional)
-- Speech-to-text via Groq Whisper
-- Sentence-by-sentence neural TTS — voice starts before response completes
-- Turkish and English support
+The system intelligently routes your queries. Simple grammar checks use fast local LLMs, while complex code refactoring spins up dedicated isolated agent instances. A master orchestrator in your OS coordinates the swarm.
 
 ---
 
 ## What This Repository Is
 
-**ARIA** is the public architecture showcase for a private Windows AI OS built by [Synapse Labs](https://github.com/codedbyOzzy).
+**ARIA** is the public architecture showcase for a private Windows AI OS built by [codedbyOzzy](https://github.com/codedbyOzzy).
 
 This repository documents:
 - Product vision and design philosophy
-- Core v2.0 architecture and engineering decisions
-- The FRIDAY → ARIA evolution story
-- Public module references and roadmap
+- The Showcase narrative and Use Cases
+- Architecture details
 
 It does **not** include private runtime code, API keys, personal memory files, automation internals, or production secrets.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) · [ROADMAP.md](ROADMAP.md) · [PRIVACY.md](PRIVACY.md)
-
----
-
-## Repository Guide
-
-| File | Purpose |
-|---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Core v2.0 technical deep-dive |
-| [ROADMAP.md](ROADMAP.md) | Sprint plan and feature timeline |
-| [SHOWCASE.md](SHOWCASE.md) | Real-world usage scenarios |
-| [PUBLIC_MODULES.md](PUBLIC_MODULES.md) | Public vs private boundary |
-| [PRIVACY.md](PRIVACY.md) | Privacy, data, and security posture |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+See [SHOWCASE.md](SHOWCASE.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [ROADMAP.md](ROADMAP.md)
 
 ---
 
@@ -207,6 +86,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) · [ROADMAP.md](ROADMAP.md) · [PRIVACY.m
 
 <br/>
 
-**Built for the future by Synapse Labs. 2026.**
+**Built for Pioneers by codedbyOzzy.**
 
 </div>
